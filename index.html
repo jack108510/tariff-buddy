@@ -234,6 +234,42 @@
     .market-option span { font-size: 13px; font-weight: 750; }
     .settings-info { margin-top: 14px; padding: 13px; border-radius: 14px; background: #f1f7f3; color: #5c756a; font-size: 10px; line-height: 1.4; }
 
+    /* ---------- STORY CARDS ---------- */
+    .stories-section { margin-top: 4px; }
+    .stories-header { display: flex; justify-content: space-between; align-items: center; margin: 0 0 12px; }
+    .stories-header h2 { font-size: 17px; letter-spacing: -.9px; margin: 0; }
+    .stories-header .live-dot { display: inline-flex; align-items: center; gap: 5px; color: #237759; font: 700 9px var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+    .stories-header .live-dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #ef8f67; animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+    .story-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 15px; margin-bottom: 11px; text-align: left; display: block; width: 100%; cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease; }
+    .story-card:active { transform: scale(.985); }
+    .story-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .story-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 7px; font: 800 8px var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+    .story-tag.high { background: #fff0e8; color: #b15c35; }
+    .story-tag.medium { background: #fff8df; color: #99731f; }
+    .story-tag.low { background: #e9f5e9; color: #4c7a47; }
+    .story-date { color: var(--muted); font: 700 9px var(--mono); }
+    .story-card h3 { font-size: 14.5px; line-height: 1.28; letter-spacing: -.3px; margin: 0 0 8px; color: var(--ink); }
+    .story-what { font-size: 11.5px; line-height: 1.45; color: #4c6358; margin: 0 0 11px; }
+    .story-affected { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 11px; }
+    .story-affected .chip { font-size: 9px; }
+    .story-action { display: flex; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 10.5px; line-height: 1.4; color: #526d62; }
+    .story-action b { color: #1b5d46; }
+
+    /* ---------- STORY DETAIL ---------- */
+    .story-detail-back { font-weight: 750; font-size: 12px; color: #2d9270; white-space: nowrap; }
+    .story-hero { margin: 0 -18px 16px; padding: 22px 20px; border-radius: 22px; background: linear-gradient(135deg, #ddfbe7, #bff4d0); }
+    .story-hero h1 { font-size: 24px; line-height: 1.05; letter-spacing: -1.2px; margin: 8px 0 8px; }
+    .story-hero p { color: #4c7665; font-size: 12px; line-height: 1.4; margin: 0; }
+    .story-block { margin-bottom: 16px; }
+    .story-block h2 { font-size: 14px; margin: 0 0 6px; letter-spacing: -.3px; }
+    .story-block p { font-size: 12px; line-height: 1.5; color: #4c6358; margin: 0; }
+    .story-rate-box { display: flex; gap: 10px; align-items: center; padding: 13px 15px; border-radius: 14px; background: var(--ink); color: white; margin-bottom: 16px; }
+    .story-rate-box .rate-big { font-size: 26px; font-weight: 800; letter-spacing: -1.5px; }
+    .story-rate-box .rate-label { font: 800 9px var(--mono); text-transform: uppercase; letter-spacing: .4px; opacity: .7; }
+    .story-rate-box .rate-flag { font-size: 30px; margin-left: auto; }
+
     @media (max-width: 680px) {
       body { background: var(--cream); }
       .stage { padding: 0; min-height: 100svh; }
@@ -252,6 +288,7 @@
   </main>
   <script src="tariff-data.js"></script>
   <script src="barcode-data.js"></script>
+  <script src="stories-data.js"></script>
   <script src="lookup-engine.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
@@ -287,8 +324,111 @@
     const priceRail = () => `<div class="price-rail"><div class="price-cell"><span>Listed</span><b>${money(listed)}</b></div><div class="price-cell extra"><span>Possible extra</span><b>+${money(current().extra)}</b></div><div class="price-cell total"><span>Possible total</span><b>${money(listed + current().extra)}</b></div></div>`;
     const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Check</span></button><button class="scan-nav ${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["browse", "industry"].includes(state.screen) ? "active" : ""}" data-action="browse"><span class="nav-icon">◇</span><span>Browse</span></button><button class="${state.screen === "saved" ? "active" : ""}" data-action="saved"><span class="nav-icon">♧</span><span>Saved</span></button></nav>`;
     function home() {
-      const preview = categories.slice(0, 3).map(category => `<button class="category-mini" data-action="industry:${category.id}"><span class="category-icon">${category.icon}</span><span><span>${category.exposure === "high" ? "Worth checking" : category.exposure === "medium" ? "Compare first" : "Lower signal"}</span><b>${category.title}</b></span><i>${arrow}</i></button>`).join("");
-      return `<div class="screen">${header("Your check")}<main class="scroll"><section class="check-hero"><div class="hero-row"><span class="prototype">Tariff Buddy check</span><span class="view-label">${current().short} view</span></div><h1>Will this cost more?</h1><p>Scan a barcode or search a product before you replace it.</p><button class="scan-primary" data-action="scanner"><span class="scan-icon">▣</span><span><strong>Scan a product</strong><small>Get a quick price signal</small></span><i>${arrow}</i></button><label class="search-row"><span>⌕</span><input id="product-search" placeholder="Search a product instead" aria-label="Search a product" /><button data-action="result">Check</button></label></section><section class="verdict"><div class="verdict-head"><div><p class="eyebrow">Sample product check</p><h3>Electric kettle</h3></div><span class="status">✓ Worth comparing</span></div>${priceRail()}<div class="price-action"><p><b>One lower-cost move:</b> Compare regional stock before checkout.</p><button data-action="alternatives">See options ${arrow}</button></div></section><section><div class="section-head"><div><p class="eyebrow">Simple ways to check</p><h2>Start with what you have</h2></div></div><div class="method-list"><button class="method" data-action="scanner"><span class="method-icon">▣</span><span><strong>Scan a barcode</strong><small>Check a store item in seconds</small></span><i>${arrow}</i></button><button class="method" data-action="result"><span class="method-icon warm">⌕</span><span><strong>Search a product</strong><small>Try the example result first</small></span><i>${arrow}</i></button></div></section><section class="category-preview"><div class="section-head"><div><p class="eyebrow">Shopping conditions</p><h2>Worth price-checking</h2></div><button class="browse-link" data-action="browse">Browse all ${arrow}</button></div><p>Category context is helpful when you do not have the product in hand yet.</p><div class="category-list">${preview}</div></section><p class="disclaimer">ⓘ Illustrative prototype only. Product prices, ranges, and recommendations will need verified data in production.</p></main>${nav()}</div>`;
+      const stories = TARIFF_STORIES.map(storyCard).join("");
+      const hist = getHistory();
+      const recentScans = hist.slice(0, 2).map(h => `<span class="chip">${h.flag || "▣"} ${esc((h.name || h.country || "Product").substring(0,18))} · ${esc(h.rate || "?")}</span>`).join("");
+      return `<div class="screen">${header("Tariff Buddy")}
+        <main class="scroll">
+          <section class="check-hero">
+            <div class="hero-row"><span class="prototype">Check a product</span><span class="view-label">${current().short} view</span></div>
+            <h1>Will it cost more?</h1>
+            <p>Scan any barcode to see its tariff impact, or browse what's changing below.</p>
+            <button class="scan-primary" data-action="scanner"><span class="scan-icon">▣</span><span><strong>Scan a product</strong><small>Check a store item in seconds</small></span><i>${arrow}</i></button>
+            <label class="search-row"><span>⌕</span><input id="product-search" placeholder="Or enter a barcode number" inputmode="numeric" aria-label="Search a product" /><button data-action="manual-home-lookup">Check</button></label>
+            ${recentScans ? `<div style="margin-top:10px;display:flex;gap:5px;flex-wrap:wrap;position:relative;z-index:1">${recentScans}</div>` : ""}
+          </section>
+
+          <section class="stories-section">
+            <div class="stories-header">
+              <h2>What's changing</h2>
+              <span class="live-dot">Updated</span>
+            </div>
+            ${stories}
+          </section>
+
+          <p class="disclaimer">ⓘ Tariff stories are curated from USITC, USTR, and trade policy sources. Rates are approximate ranges — exact duties depend on product classification.</p>
+        </main>${nav()}</div>`;
+    }
+
+    function storyCard(story) {
+      return `<button class="story-card" data-action="story:${story.id}">
+        <div class="story-card-header">
+          <span class="story-tag ${story.severity}">${esc(story.tag)}</span>
+          <span class="story-date">${esc(formatStoryDate(story.date))}</span>
+        </div>
+        <h3>${esc(story.headline)}</h3>
+        <p class="story-what">${esc(story.what.substring(0, 130))}${story.what.length > 130 ? "…" : ""}</p>
+        <div class="story-affected">${story.affected.split(", ").slice(0, 3).map(a => `<span class="chip">${esc(a)}</span>`).join("")}</div>
+        <div class="story-action"><span>→</span><span><b>What to do:</b> ${esc(story.action.substring(0, 90))}${story.action.length > 90 ? "…" : ""}</span></div>
+      </button>`;
+    }
+
+    function storyDetail(id) {
+      const story = TARIFF_STORIES.find(s => s.id === id);
+      if (!story) return home();
+      const tariff = TARIFF_DATA.lookup(story.origin === "MULTI" ? "CN" : story.origin, story.category);
+      const flag = tariff.flag || "🌍";
+      const parsed = TARIFF_DATA.parseRate(tariff.rate);
+      return `<div class="screen">${header(story.tag, { back: "home" })}
+        <main class="scroll">
+          <section class="story-hero">
+            <span class="story-tag ${story.severity}">${esc(story.tag)}</span>
+            <h1>${esc(story.headline)}</h1>
+            <p>${esc(formatStoryDate(story.date))}</p>
+          </section>
+
+          <div class="story-rate-box">
+            <div>
+              <div class="rate-label">Tariff range</div>
+              <div class="rate-big">${esc(tariff.rate)}</div>
+            </div>
+            <div class="rate-flag">${flag}</div>
+          </div>
+
+          <div class="story-block">
+            <h2>What happened</h2>
+            <p>${esc(story.what)}</p>
+          </div>
+
+          <div class="story-block">
+            <h2>What gets more expensive</h2>
+            <p>${esc(story.affected)}</p>
+          </div>
+
+          <div class="story-block">
+            <h2 style="color:#1b5d46">What you can do</h2>
+            <p>${esc(story.action)}</p>
+          </div>
+
+          <section class="next-card" style="margin-top:16px">
+            <span class="next-icon">▣</span>
+            <div>
+              <p class="eyebrow">Check a specific product</p>
+              <h3>Scan something you're buying</h3>
+              <p>See the real tariff rate for any product in this category.</p>
+            </div>
+            <button data-action="scanner">${arrow}</button>
+          </section>
+          <button class="wide-action" data-action="scanner">Scan a product ${arrow}</button>
+
+          <p class="disclaimer">ⓘ Sources: ${story.sources.map(esc).join(", ")}. Rates are approximate consumer-level ranges.</p>
+        </main>${nav()}</div>`;
+    }
+
+    function formatStoryDate(dateStr) {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffDays = Math.floor((now - d) / 86400000);
+      if (diffDays === 0) return "Today";
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return diffDays + "d ago";
+      if (diffDays < 30) return Math.floor(diffDays / 7) + "w ago";
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+      catch { return []; }
     }
     function scanner() {
       if (state.scanning && state.scanFound) {
@@ -393,7 +533,7 @@
       return `<div class="screen">${header("Shopping market", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Your location</p><h1>Where are you shopping?</h1><p>We use this to shape the example price check and available product context.</p></section><section class="settings-card"><p class="settings-label">Market</p>${options}</section><section class="settings-info">ⓘ Market selection updates this prototype. Production calculations require verified schedules, origin data, and retailer prices.</section></main>${nav()}</div>`;
     }
     function render() {
-      const screens = { home, scanner, result, alternatives, saved, browse, industry, settings };
+      const screens = { home, scanner, result, alternatives, saved, browse, industry, settings, story: () => storyDetail(state.activeStory) };
       app.innerHTML = screens[state.screen]();
       document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => action(button.dataset.action)));
       const categorySearch = document.getElementById("category-search");
@@ -439,6 +579,27 @@
       if (value.startsWith("industry:")) { state.active = value.split(":")[1]; state.screen = "industry"; render(); return; }
       if (value.startsWith("filter:")) { state.filter = value.split(":")[1]; render(); return; }
       if (value.startsWith("market:")) { state.market = value.split(":")[1]; state.screen = "home"; state.query = ""; state.filter = "all"; render(); return; }
+      // Story navigation
+      if (value.startsWith("story:")) { state.activeStory = value.split(":")[1]; state.screen = "story"; render(); return; }
+      // Home page manual barcode lookup
+      if (value === "manual-home-lookup") {
+        const input = document.getElementById("product-search");
+        const barcode = input?.value?.trim();
+        if (!barcode || barcode.length < 8) { render(); return; }
+        state.screen = "scanner";
+        state.scanning = true;
+        state.scanFound = false;
+        state.lastLookupError = null;
+        render();
+        ProductLookup.lookup(barcode).then(result => {
+          state.scanResult = result;
+          state.scanFound = true;
+          state.screen = "result";
+          render();
+          addToHistory(result);
+        });
+        return;
+      }
       state.screen = value;
       if (value === "scanner") { state.scanFound = false; state.scanning = false; }
       render();
