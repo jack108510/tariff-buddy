@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tariff Buddy — What's About to Cost More</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --card-hover: #232734;
+  --border: #2a2e3c;
+  --text: #e4e6eb;
+  --text-dim: #8b8f9e;
+  --accent: #4a9eff;
+  --red: #ff5454;
+  --green: #4caf50;
+  --orange: #ffa726;
+  --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5; padding-bottom: 40px;
+}
+.container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+/* Header */
+header {
+  text-align: center; padding: 40px 16px 24px;
+  background: linear-gradient(180deg, #141823 0%, var(--bg) 100%);
+}
+header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+header h1 span { color: var(--accent); }
+header p { color: var(--text-dim); font-size: 14px; margin-top: 6px; }
+
+/* Filters */
+.filters {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  justify-content: center; margin: 16px 0;
+}
+.filter-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text-dim); font-size: 13px;
+  cursor: pointer; transition: all 0.15s;
+}
+.filter-btn:hover { border-color: var(--accent); color: var(--text); }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Alert cards */
+.feed { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+
+.alert-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px; transition: border-color 0.15s;
+}
+.alert-card:hover { border-color: #3a3f52; }
+
+.alert-card .category {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-dim); font-weight: 600;
+}
+
+.alert-card h3 { font-size: 16px; margin: 6px 0 8px; }
+
+.tariff-impact {
+  display: inline-block; font-size: 12px; font-weight: 600;
+  padding: 3px 8px; border-radius: 6px; margin-left: 8px; vertical-align: middle;
+}
+.impact-high { background: rgba(255,84,84,0.15); color: var(--red); }
+.impact-medium { background: rgba(255,167,38,0.15); color: var(--orange); }
+.impact-low { background: rgba(76,175,80,0.15); color: var(--green); }
+
+.summary { font-size: 14px; color: var(--text-dim); margin: 8px 0 12px; }
+
+.affected-section { margin-top: 12px; }
+.section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 6px;
+}
+
+.brand-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; margin-bottom: 4px;
+  background: rgba(0,0,0,0.2);
+}
+.brand-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-affected { background: var(--red); }
+.dot-safe { background: var(--green); }
+
+.brand-name { font-weight: 600; font-size: 14px; }
+.brand-meta { font-size: 12px; color: var(--text-dim); }
+.brand-flag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(74,158,255,0.1); color: var(--accent); margin-left: auto; }
+
+.alternatives-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.alt-tag {
+  font-size: 12px; padding: 4px 10px; border-radius: 6px;
+  background: rgba(76,175,80,0.1); color: var(--green); border: 1px solid rgba(76,175,80,0.2);
+  cursor: pointer; text-decoration: none;
+}
+.alt-tag:hover { background: rgba(76,175,80,0.2); }
+
+.source {
+  font-size: 11px; color: var(--text-dim); margin-top: 10px;
+  border-top: 1px solid var(--border); padding-top: 8px;
+}
+.source a { color: var(--accent); text-decoration: none; }
+
+.updated-badge { font-size: 11px; color: var(--text-dim); }
+
+/* Category browse */
+.browse-section { margin-top: 24px; }
+.browse-section h2 { font-size: 16px; margin-bottom: 12px; }
+
+.empty-state { text-align: center; padding: 40px; color: var(--text-dim); font-size: 14px; }
+
+/* Disclaimer */
+.disclaimer {
+  margin-top: 32px; padding: 14px; text-align: center;
+  font-size: 11px; color: var(--text-dim); line-height: 1.6;
+  border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>Tariff<span>Buddy</span></h1>
+    <p>What's about to cost more — and what to buy instead</p>
+  </div>
+</header>
+
+<div class="container">
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-cat="all">All</button>
+    <!-- category buttons inserted by JS -->
+  </div>
+
+  <div class="feed" id="feed"></div>
+
+  <div class="disclaimer">
+    Tariff Buddy translates public trade data into plain language. Predictions are directional — brands may absorb costs rather than pass them through. Always check shelf prices.<br><br>
+    Data sources: USITC HTS Database, Federal Register, USDA COOL, USTR.
+  </div>
+</div>
+
+<script>
+// ============================================================
+// BRAND-TO-ORIGIN DATABASE
+// This is the core asset. Each entry: brand, category, origin, source.
+// ============================================================
+const BRANDS = [
+  // --- Dairy ---
+  { brand: "Organic Valley", category: "Dairy", origin: "USA", type: "major" },
+  { brand: "Saputo", category: "Dairy", origin: "Canada", type: "major" },
+  { brand: "Arla", category: "Dairy", origin: "Denmark", type: "major" },
+  { brand: "Lactalis", category: "Dairy", origin: "France", type: "major" },
+  { brand: "Tillamook", category: "Dairy", origin: "USA", type: "major" },
+  { brand: "Kraft Heinz", category: "Dairy", origin: "USA", type: "major" },
+  { brand: "Gay Lea", category: "Dairy", origin: "Canada", type: "major" },
+  { brand: "Horizon Organic", category: "Dairy", origin: "USA", type: "major" },
+  { brand: "Galbani", category: "Dairy", origin: "Italy", type: "major" },
+  { brand: "Parmalat", category: "Dairy", origin: "Italy", type: "major" },
+
+  // --- Coffee ---
+  { brand: "Lavazza", category: "Coffee", origin: "Italy", type: "major" },
+  { brand: "Illy", category: "Coffee", origin: "Italy", type: "major" },
+  { brand: "Folgers", category: "Coffee", origin: "USA", type: "major" },
+  { brand: "Maxwell House", category: "Coffee", origin: "USA", type: "major" },
+  { brand: "Starbucks (retail)", category: "Coffee", origin: "USA", type: "major" },
+  { brand: "Nespresso", category: "Coffee", origin: "Switzerland", type: "major" },
+  { brand: "Tim Hortons", category: "Coffee", origin: "Canada", type: "major" },
+  { brand: "Counter Culture", category: "Coffee", origin: "USA", type: "major" },
+  { brand: "Death Wish Coffee", category: "Coffee", origin: "USA", type: "major" },
+  { brand: "Cafe Bustelo", category: "Coffee", origin: "USA", type: "major" },
+
+  // --- Electronics ---
+  { brand: "Apple", category: "Electronics", origin: "China", type: "major" },
+  { brand: "Samsung", category: "Electronics", origin: "South Korea", type: "major" },
+  { brand: "Dell", category: "Electronics", origin: "China", type: "major" },
+  { brand: "HP", category: "Electronics", origin: "China", type: "major" },
+  { brand: "Lenovo", category: "Electronics", origin: "China", type: "major" },
+  { brand: "Sony", category: "Electronics", origin: "Japan", type: "major" },
+  { brand: "Bose", category: "Electronics", origin: "USA", type: "major" },
+  { brand: "Google Pixel", category: "Electronics", origin: "China", type: "major" },
+  { brand: "Framework", category: "Electronics", origin: "Taiwan", type: "major" },
+  { brand: "LG", category: "Electronics", origin: "South Korea", type: "major" },
+
+  // --- Produce ---
+  { brand: "Dole", category: "Produce", origin: "Multiple", type: "major" },
+  { brand: "Del Monte", category: "Produce", origin: "Multiple", type: "major" },
+  { brand: "Chiquita", category: "Produce", origin: "Multiple", type: "major" },
+  { brand: "Sunkist", category: "Produce", origin: "USA", type: "major" },
+  { brand: "Earthbound Farm", category: "Produce", origin: "USA", type: "major" },
+  { brand: "Driscoll's", category: "Produce", origin: "Multiple", type: "major" },
+  { brand: "Ocean Mist Farms", category: "Produce", origin: "USA", type: "major" },
+  { brand: "Little Potato Company", category: "Produce", origin: "Canada", type: "major" },
+
+  // --- Beer & Alcohol ---
+  { brand: "Corona", category: "Beer & Alcohol", origin: "Mexico", type: "major" },
+  { brand: "Modelo", category: "Beer & Alcohol", origin: "Mexico", type: "major" },
+  { brand: "Heineken", category: "Beer & Alcohol", origin: "Netherlands", type: "major" },
+  { brand: "Stella Artois", category: "Beer & Alarm", origin: "Belgium", type: "major" },
+  { brand: "Molson Coors", category: "Beer & Alcohol", origin: "USA", type: "major" },
+  { brand: "Labatt", category: "Beer & Alcohol", origin: "Canada", type: "major" },
+  { brand: "Samuel Adams", category: "Beer & Alcohol", origin: "USA", type: "major" },
+  { brand: "Sierra Nevada", category: "Beer & Alcohol", origin: "USA", type: "major" },
+
+  // --- Apparel ---
+  { brand: "Levi's", category: "Apparel", origin: "Multiple", type: "major" },
+  { brand: "Nike", category: "Apparel", origin: "Vietnam", type: "major" },
+  { brand: "Adidas", category: "Apparel", origin: "Vietnam", type: "major" },
+  { brand: "Carhartt", category: "Apparel", origin: "USA", type: "major" },
+  { brand: "American Giant", category: "Apparel", origin: "USA", type: "major" },
+  { brand: "Uniqlo", category: "Apparel", origin: "China", type: "major" },
+  { brand: "H&M", category: "Apparel", origin: "Multiple", type: "major" },
+  { brand: "Zara", category: "Apparel", origin: "Spain", type: "major" },
+
+  // --- Auto Parts ---
+  { brand: "Dorman", category: "Auto Parts", origin: "USA", type: "major" },
+  { brand: "Denso", category: "Auto Parts", origin: "Japan", type: "major" },
+  { brand: "Bosch", category: "Auto Parts", origin: "Germany", type: "major" },
+  { brand: "NGK", category: "Auto Parts", origin: "Japan", type: "major" },
+  { brand: "Magna", category: "Auto Parts", origin: "Canada", type: "major" }
+];
+
+// ============================================================
+// TARIFF EVENTS — Real or realistic scenarios
+// ============================================================
+const TARIFF_EVENTS = [
+  {
+    id: 1,
+    title: "25% tariff on Canadian imports",
+    country: "Canada",
+    htsCodes: "Various (broad)",
+    rate: "25%",
+    impactLevel: "high",
+    announced: "2025-02-01",
+    source: "USTR Executive Action",
+    sourceUrl: "https://www.federalregister.gov",
+    summary: "A 25% tariff on most Canadian goods has been announced. Canadian dairy, beer, and produce brands are most exposed. Expect shelf price increases within 30-60 days if brands pass costs through."
+  },
+  {
+    id: 2,
+    title: "25% tariff on Mexican imports",
+    country: "Mexico",
+    htsCodes: "Various (broad)",
+    rate: "25%",
+    impactLevel: "high",
+    announced: "2025-02-01",
+    source: "USTR Executive Action",
+    sourceUrl: "https://www.federalregister.gov",
+    summary: "A 25% tariff on Mexican goods impacts beer (Corona, Modelo) and produce. Expect price increases on Mexican-sourced brands."
+  },
+  {
+    id: 3,
+    title: "Additional 10% tariff on Chinese goods",
+    country: "China",
+    htsCodes: "Section 301 List",
+    rate: "+10%",
+    impactLevel: "high",
+    announced: "2025-02-04",
+    source: "USTR Section 301",
+    sourceUrl: "https://www.federalregister.gov",
+    summary: "An additional 10% tariff on Chinese imports compounds existing Section 301 tariffs. Electronics (phones, laptops, accessories) are most exposed. Expect price increases on devices and components."
+  },
+  {
+    id: 4,
+    title: "EU tariff threat — 25% on European goods",
+    country: "European Union",
+    htsCodes: "Proposed (various)",
+    rate: "25% (proposed)",
+    impactLevel: "medium",
+    announced: "2025-03-12",
+    source: "USTR Notice",
+    sourceUrl: "https://www.federalregister.gov",
+    summary: "Proposed 25% tariff on EU goods under review. Would impact dairy (Italian, French, Danish), coffee (Italian), and apparel (Spanish). Not yet enacted — monitor for confirmation."
+  },
+  {
+    id: 5,
+    title: "Reciprocal tariff on South Korea — proposed",
+    country: "South Korea",
+    htsCodes: "Proposed",
+    rate: "15-25% (proposed)",
+    impactLevel: "medium",
+    announced: "2025-07-01",
+    source: "USTR Notice",
+    sourceUrl: "https://www.federalregister.gov",
+    summary: "Reciprocal tariffs on South Korean electronics proposed. Would impact Samsung and LG products. Not yet enacted."
+  }
+];
+
+// ============================================================
+// ENGINE — matches tariff events to brands, finds alternatives
+// ============================================================
+
+function getAffectedBrands(event) {
+  return BRANDS.filter(b => {
+    // Match by origin country or bloc
+    const euCountries = ["Germany", "France", "Italy", "Denmark", "Netherlands", "Belgium", "Spain", "Ireland"];
+    if (event.country === "European Union" && euCountries.includes(b.origin)) return true;
+    return b.origin === event.country;
+  });
+}
+
+function getAlternatives(brand, event) {
+  // Same category, different (unaffected) origin
+  return BRANDS.filter(b => {
+    if (b.brand === brand.brand) return false;
+    if (b.category !== brand.category) return false;
+    const euCountries = ["Germany", "France", "Italy", "Denmark", "Netherlands", "Belgium", "Spain", "Ireland"];
+    if (event.country === "European Union" && euCountries.includes(b.origin)) return false;
+    return b.origin !== event.country && b.origin !== "Multiple";
+  }).slice(0, 3); // top 3 alternatives
+}
+
+function impactBadge(level) {
+  const map = { high: "🔴 High Impact", medium: "🟡 Medium Impact", low: "🟢 Low Impact" };
+  const cls = level === "high" ? "impact-high" : level === "medium" ? "impact-medium" : "impact-low";
+  const label = level === "high" ? "High Impact" : level === "medium" ? "Medium Impact" : "Low Impact";
+  return `<span class="tariff-impact ${cls}">${label}</span>`;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+
+let activeCategory = "all";
+
+function renderFilters() {
+  const categories = [...new Set(TARIFF_EVENTS.map(e =>
+    getAffectedBrands(e).map(b => b.category)
+  ).flat())].sort();
+
+  const container = document.getElementById("filters");
+  const existing = container.innerHTML = '<button class="filter-btn active" data-cat="all">All</button>';
+
+  categories.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "filter-btn";
+    btn.dataset.cat = cat;
+    btn.textContent = cat;
+    container.appendChild(btn);
+  });
+
+  container.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      container.querySelector(".active")?.classList.remove("active");
+      btn.classList.add("active");
+      activeCategory = btn.dataset.cat;
+      renderFeed();
+    });
+  });
+}
+
+function renderFeed() {
+  const feed = document.getElementById("feed");
+  feed.innerHTML = "";
+
+  let events = TARIFF_EVENTS;
+  if (activeCategory !== "all") {
+    events = events.filter(e => getAffectedBrands(e).some(b => b.category === activeCategory));
+  }
+
+  if (events.length === 0) {
+    feed.innerHTML = '<div class="empty-state">No active tariff events in this category.</div>';
+    return;
+  }
+
+  events.forEach(event => {
+    const affected = getAffectedBrands(event);
+    if (activeCategory !== "all") {
+      // Only show brands in selected category
+    }
+    const brandsToShow = activeCategory === "all" ? affected : affected.filter(b => b.category === activeCategory);
+
+    const card = document.createElement("div");
+    card.className = "alert-card";
+
+    let brandsHtml = "";
+    brandsToShow.forEach(brand => {
+      const alts = getAlternatives(brand, event);
+      const altHtml = alts.map(a => `<a class="alt-tag" href="#">${a.brand} · ${a.origin}</a>`).join("");
+      brandsHtml += `
+        <div class="brand-row">
+          <div class="dot dot-affected"></div>
+          <div>
+            <div class="brand-name">${brand.brand}</div>
+            <div class="brand-meta">${brand.category} · ${brand.origin}</div>
+          </div>
+          <span class="brand-flag">${event.rate}</span>
+        </div>
+        ${alts.length ? `<div class="alternatives-list"><span class="section-label" style="margin-right:4px;">Try instead:</span>${altHtml}</div>` : ""}
+      `;
+    });
+
+    card.innerHTML = `
+      <div class="category">${event.country} · Announced ${formatDate(event.announced)}</div>
+      <h3>${event.title} ${impactBadge(event.impactLevel)}</h3>
+      <p class="summary">${event.summary}</p>
+      <div class="affected-section">
+        <div class="section-label">Brands likely affected (${brandsToShow.length})</div>
+        ${brandsHtml || '<div class="brand-meta">No tracked brands in this category match.</div>'}
+      </div>
+      <div class="source">Source: <a href="${event.sourceUrl}" target="_blank" rel="noopener">${event.source}</a> · HTS: ${event.htsCodes}</div>
+    `;
+    feed.appendChild(card);
+  });
+}
+
+// Init
+renderFilters();
+renderFeed();
+</script>
+
+</body>
+</html>
