@@ -792,19 +792,18 @@
     function settings() {
       const marketOptions = Object.entries(markets).map(([id, market]) => {
         const rateNote = id === "US" ? "USITC HTS" : id === "CA" ? "CBSA Customs Tariff" : "TARIC (illustrative)";
-        return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">◎ ${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`;
+        return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green);font-size:16px\">✓</b>" : ""}</button>`;
       }).join("");
 
-      // Account section
+      const localScanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
+
       let accountSection;
       if (state.authUser && state.profile) {
         const p = state.profile;
         const countryInfo = ONBOARDING_COUNTRIES.find(c => c.code === p.country_code);
         const initials = (p.display_name || p.email || "?").charAt(0).toUpperCase();
-        const scanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
-
         accountSection = `
-        <div class="settings-card" style="overflow:visible">
+        <div class="settings-card" style="overflow:visible;padding:0">
           <div class="settings-profile">
             <div class="settings-avatar">${esc(initials)}</div>
             <div class="settings-profile-info">
@@ -816,41 +815,37 @@
         <div class="settings-card">
           <div class="account-row"><span class="label">Country</span><span class="value">${countryInfo ? countryInfo.flag + " " + countryInfo.name : p.country_code || "—"}</span></div>
           <div class="account-row"><span class="label">Member since</span><span class="value" style="font-size:11px">${p.created_at ? new Date(p.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—"}</span></div>
-          <div class="account-row"><span class="label">Scans</span><span class="value">${scanCount}</span></div>
+          <div class="account-row"><span class="label">Total scans</span><span class="value">${localScanCount}</span></div>
         </div>
         <button class="logout-btn" data-action="sign-out">Log out</button>
         <button class="danger-btn-subtle" data-action="delete-account">Delete account</button>`;
       } else {
-        accountSection = `<section class="settings-card"><p class="settings-label">Account</p>
-          <div style="padding:16px;text-align:center">
-            <p style="color:var(--muted);font-size:12px;margin:0 0 12px">Sign in to sync your scan history across devices.</p>
-            <button class="auth-btn" data-action="onb-signup">Create account</button>
-            <button class="browse-link" style="margin-top:10px;font-size:12px" data-action="onb-signin">Already have an account?</button>
-          </div>
-        </section>`;
+        accountSection = `
+        <div class="settings-card" style="padding:20px;text-align:center">
+          <div class="settings-avatar" style="margin:0 auto 12px;width:48px;height:48px;font-size:20px">◎</div>
+          <p style="color:var(--ink);font-size:14px;font-weight:800;margin:0 0 4px">No account signed in</p>
+          <p style="color:var(--muted);font-size:11px;margin:0 0 14px;line-height:1.4">Sign in to sync your scan history across devices.</p>
+          <button class="auth-btn" data-action="onb-signup">Create account</button>
+          <button class="logout-btn" style="background:transparent;color:var(--green);border:1px solid var(--green);margin-top:8px" data-action="onb-signin">Sign in</button>
+        </div>`;
       }
-
-      const isAuthed = !!(state.authUser && state.profile);
 
       return `<div class="screen">${header("Settings", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Preferences</p><h1>Settings.</h1></section>
         ${accountSection}
-        ${isAuthed ? "" : ""}
         <p class="settings-section-title">Tariff Market</p>
         ${marketOptions}
         <p class="settings-section-title">Data</p>
-          <div class="settings-card">
-            <button class="account-row" style="width:100%;text-align:left;background:none;border:none;cursor:pointer" data-action="clear-history">
-              <span class="value" style="font-size:13px">Clear scan history</span>
-              <span class="label">${(() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })() } scans</span>
-            </button>
-          </div>
+          <button class="settings-card" style="width:100%;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border:1px solid var(--line);background:#fff" data-action="clear-history">
+            <span style="font-size:13px;font-weight:700;color:#b04020">Clear scan history</span>
+            <span class="label">${localScanCount} ${localScanCount === 1 ? "scan" : "scans"}</span>
+          </button>
         <p class="settings-section-title">About</p>
           <div class="settings-card">
             <div class="account-row"><span class="label">Version</span><span class="value">1.0</span></div>
             <div class="account-row"><span class="label">Tariff source</span><span class="value" style="font-size:11px">USITC / CBSA</span></div>
             <div class="account-row"><span class="label">Product data</span><span class="value" style="font-size:11px">Open Food Facts + UPCitemdb</span></div>
           </div>
-        <p class="disclaimer" style="margin-top:18px">ⓘ Tariff rates are approximate consumer-level ranges. Not a substitute for official trade advice.</p>
+        <p class="disclaimer" style="margin-top:16px;padding-bottom:20px">ⓘ Tariff rates are approximate consumer-level ranges. Not a substitute for official trade advice.</p>
       </main>${nav()}</div>`;
     }
     function render() {
