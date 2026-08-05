@@ -157,4 +157,63 @@ const SupabaseClient = {
       return { error: e.message };
     }
   },
+
+  /**
+   * Get user profile from tb_users
+   */
+  async getProfile(accessToken) {
+    if (!accessToken) return null;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?select=id,email,display_name,country_code,currency,locale&limit=1`, {
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${accessToken}`,
+        },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data && data.length ? data[0] : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Update user profile (display_name, country_code)
+   * PostgREST requires a filter — we use id=auth.uid() via RLS
+   */
+  async updateProfile(updates, accessToken) {
+    if (!accessToken) return null;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?email=neq.impossible`, {
+        method: "PATCH",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify(updates),
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /**
+   * Sign out (revoke current session token)
+   */
+  async signOut(accessToken) {
+    if (!accessToken) return;
+    try {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${accessToken}`,
+        },
+      });
+    } catch (e) {}
+  },
 };

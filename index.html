@@ -280,6 +280,21 @@
       .notch { display: none; }
       .header { padding-top: 15px; height: 62px; }
     }
+    .auth-field { width: 100%; height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 13px; background: #fff; color: var(--ink); font-size: 13px; outline: none; margin-bottom: 10px; }
+    .auth-field:focus { border-color: var(--green); }
+    .auth-btn { width: 100%; height: 48px; border-radius: 14px; background: #104d3a; color: white; font-size: 14px; font-weight: 800; }
+    .auth-btn:disabled { opacity: .5; }
+    .auth-error { background: #fde8e0; color: #b04020; padding: 10px 14px; border-radius: 12px; font-size: 11px; margin-bottom: 12px; }
+    .country-option { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 8px; cursor: pointer; }
+    .country-option.selected { border-color: var(--green); background: #eef9f1; }
+    .country-option .flag { font-size: 26px; }
+    .country-option .name { font-weight: 700; font-size: 13px; }
+    .country-option .sub { font-size: 10px; color: var(--muted); }
+    .account-row { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-bottom: 1px solid #edf1ed; }
+    .account-row:last-child { border-bottom: 0; }
+    .account-row .label { font: 800 9px var(--mono); text-transform: uppercase; color: var(--muted); }
+    .account-row .value { font-size: 13px; font-weight: 700; }
+    .danger-btn { width: 100%; height: 46px; border-radius: 13px; background: #fde8e0; color: #b04020; font-size: 13px; font-weight: 800; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -315,7 +330,7 @@
       { id: "baby", icon: "♡", title: "Baby & pet essentials", exposure: "low", range: "3–14%", origin: ["EU", "CN", "CA"], impact: "A product-by-product comparison can be more useful than a category assumption.", detail: "Safety, compatibility, and personal needs should remain the primary criteria for essential products.", types: ["Pet supplies", "Feeding", "Care accessories"] },
       { id: "garden", icon: "♤", title: "Garden & outdoor", exposure: "medium", range: "5–24%", origin: ["CA", "MX", "CN"], impact: "Outdoor equipment and seasonal supplies may have comparable local options.", detail: "Seasonality and local availability can make a large difference in the final price for garden goods.", types: ["Hand tools", "Planters", "Outdoor lighting"] }
     ];
-    const state = { screen: "home", market: "US", scanFound: false, saved: false, query: "", filter: "all", active: "home", scanResult: null, scanning: false, manualBarcode: "", lastLookupError: null, activeStory: null, dbStories: null, authUser: null };
+    const state = { screen: "home", market: "US", scanFound: false, saved: false, query: "", filter: "all", active: "home", scanResult: null, scanning: false, manualBarcode: "", lastLookupError: null, activeStory: null, dbStories: null, authUser: null, profile: null, onbStep: null, authError: null, authLoading: false };
     const listed = 44.99;
     const app = document.getElementById("app");
     const HISTORY_KEY = "tariff-buddy-scan-history";
@@ -326,7 +341,7 @@
     const arrow = "›";
     const header = (title, options = {}) => `<header class="header">${options.back ? `<button class="circle-button" data-action="${options.back}" aria-label="Go back">‹</button>` : `<div class="brand-logo"><img src="assets/logo-48.png" alt="Tariff Buddy" /></div>`}<h2>${title}</h2><div class="header-side">${options.example ? `<button class="text-button" data-action="result">Try example</button>` : options.market === false ? "" : `<button class="market" data-action="settings">◎ ${current().short} ${arrow}</button>`}</div></header>`;
     const priceRail = () => `<div class="price-rail"><div class="price-cell"><span>Listed</span><b>${money(listed)}</b></div><div class="price-cell extra"><span>Possible extra</span><b>+${money(current().extra)}</b></div><div class="price-cell total"><span>Possible total</span><b>${money(listed + current().extra)}</b></div></div>`;
-    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Home</span></button><button class="${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["history", "story"].includes(state.screen) ? "active" : ""}" data-action="history"><span class="nav-icon">≣</span><span>History</span></button></nav>`;
+    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Home</span></button><button class="${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["history", "story"].includes(state.screen) ? "active" : ""}" data-action="history"><span class="nav-icon">≣</span><span>History</span></button><button class="${["settings"].includes(state.screen) ? "active" : ""}" data-action="settings"><span class="nav-icon">⚙</span><span>Settings</span></button></nav>`;
     function home() {
       const storiesData = state.dbStories || TARIFF_STORIES;
       const stories = storiesData.map(storyCard).join("");
@@ -611,21 +626,229 @@
 
       return `<div class="screen">${header("History")}<main class="scroll"><section class="intro"><p class="eyebrow">${hist.length} ${hist.length === 1 ? "scan" : "scans"} total</p><h1>Your scan history.</h1></section>${groupHtml}<button class="wide-action" data-action="scanner" style="margin-top:18px">Scan another product ${arrow}</button></main>${nav()}</div>`;
     }
+    const ONBOARDING_COUNTRIES = [
+      { code: "US", flag: "🇺🇸", name: "United States", sub: "USITC Harmonized Tariff Schedule" },
+      { code: "CA", flag: "🇨🇦", name: "Canada", sub: "CBSA Customs Tariff" },
+      { code: "EU", flag: "🇪🇺", name: "European Union", sub: "TARIC (illustrative)" },
+      { code: "GB", flag: "🇬🇧", name: "United Kingdom", sub: "UK Global Tariff (illustrative)" },
+      { code: "AU", flag: "🇦🇺", name: "Australia", sub: "Illustrative rates" },
+      { code: "OTHER", flag: "🌍", name: "Other", sub: "US rates as reference" },
+    ];
+
+    function onboarding() {
+      const step = state.onbStep || "welcome";
+      if (step === "welcome") return onbWelcome();
+      if (step === "signup") return onbAuth("signup");
+      if (step === "signin") return onbAuth("signin");
+      if (step === "country") return onbCountry();
+      return onbWelcome();
+    }
+
+    function onbWelcome() {
+      return `<div class="screen">${header("Welcome", { market: false })}<main class="scroll" style="display:flex;flex-direction:column;justify-content:center;padding:30px 22px">
+        <div style="text-align:center;margin-bottom:30px">
+          <div style="font-size:48px;margin-bottom:12px">📦</div>
+          <h1 style="font-size:26px;letter-spacing:-1px;margin:0 0 8px">Tariff Buddy</h1>
+          <p style="color:var(--muted);font-size:13px;line-height:1.5;margin:0">Scan any product barcode. See the tariff rate, country of origin, and price impact instantly.</p>
+        </div>
+        <button class="auth-btn" data-action="onb-signup">Create account</button>
+        <button class="auth-btn" style="background:#fff;color:#104d3a;border:1px solid var(--line);margin-top:10px" data-action="onb-signin">I already have an account</button>
+        <button class="browse-link" style="text-align:center;margin-top:20px;font-size:12px" data-action="onb-skip">Skip for now</button>
+      </main></div>`;
+    }
+
+    function onbAuth(mode) {
+      const isSignup = mode === "signup";
+      const title = isSignup ? "Create account" : "Sign in";
+      const cta = isSignup ? "Create account" : "Sign in";
+      const switchText = isSignup ? "Already have an account? Sign in" : "Need an account? Create one";
+      const switchAction = isSignup ? "onb-signin" : "onb-signup";
+      return `<div class="screen">${header(title, { back: "onb-welcome", market: false })}<main class="scroll" style="padding:24px 22px">
+        <div style="margin-bottom:20px">
+          <h1 style="font-size:22px;letter-spacing:-.8px;margin:0 0 6px">${title}</h1>
+          <p style="color:var(--muted);font-size:12px;margin:0">${isSignup ? "Save your scan history across devices." : "Welcome back."}</p>
+        </div>
+        ${state.authError ? `<div class="auth-error">${esc(state.authError)}</div>` : ""}
+        <form id="auth-form" onsubmit="return false">
+          ${isSignup ? `<input class="auth-field" id="auth-name" placeholder="Display name" autocomplete="name" />` : ""}
+          <input class="auth-field" id="auth-email" type="email" placeholder="Email" autocomplete="email" required />
+          <input class="auth-field" id="auth-password" type="password" placeholder="Password (min 6 characters)" autocomplete="${isSignup ? "new-password" : "current-password"}" required minlength="6" />
+          <button class="auth-btn" type="submit" data-action="auth-submit" ${state.authLoading ? "disabled" : ""}>${state.authLoading ? "Please wait…" : cta}</button>
+        </form>
+        <button class="browse-link" style="text-align:center;margin-top:16px;font-size:12px" data-action="${switchAction}">${switchText}</button>
+      </main></div>`;
+    }
+
+    function onbCountry() {
+      const selected = state.onbCountry || state.market;
+      const options = ONBOARDING_COUNTRIES.map(c => `<button class="country-option ${c.code === selected ? "selected" : ""}" data-action="onb-pick-country:${c.code}"><div><span class="name">${c.flag} ${c.name}</span><div class="sub">${c.sub}</div></div>${c.code === selected ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`).join("");
+      return `<div class="screen">${header("Your country", { back: "onb-signup", market: false })}<main class="scroll" style="padding:24px 22px">
+        <div style="margin-bottom:20px">
+          <h1 style="font-size:22px;letter-spacing:-.8px;margin:0 0 6px">Where do you live?</h1>
+          <p style="color:var(--muted);font-size:12px;margin:0">We'll show tariff rates for your country's import schedule.</p>
+        </div>
+        ${options}
+        <button class="auth-btn" style="margin-top:16px" data-action="onb-finish">Continue</button>
+      </main></div>`;
+    }
+
+    async function handleAuthSubmit() {
+      const email = document.getElementById("auth-email")?.value?.trim();
+      const password = document.getElementById("auth-password")?.value;
+      const name = document.getElementById("auth-name")?.value?.trim();
+      if (!email || !password || password.length < 6) {
+        state.authError = "Enter a valid email and a password of at least 6 characters.";
+        render(); return;
+      }
+      state.authError = null;
+      state.authLoading = true;
+      render();
+
+      const isSignup = state.onbStep === "signup";
+      let result;
+      if (isSignup) {
+        result = await SupabaseClient.signUp(email, password);
+        if (result.access_token) {
+          state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email, userId: result.user?.id };
+          await SupabaseClient.updateProfile({ display_name: name || email.split("@")[0] }, result.access_token);
+          state.profile = await SupabaseClient.getProfile(result.access_token);
+          saveSession(result, email, name);
+          state.authLoading = false;
+          state.onbStep = "country";
+          render();
+        } else if (result.error) {
+          state.authError = result.error_description || result.error || result.message || "Sign up failed.";
+          state.authLoading = false;
+          render();
+        } else {
+          // Email confirmation required
+          state.authError = "Check your email to confirm your account, then sign in.";
+          state.authLoading = false;
+          state.onbStep = "signin";
+          render();
+        }
+      } else {
+        result = await SupabaseClient.signIn(email, password);
+        if (result.access_token) {
+          state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email: result.user?.email || email, userId: result.user?.id };
+          state.profile = await SupabaseClient.getProfile(result.access_token);
+          saveSession(result, email);
+          state.authLoading = false;
+          state.screen = "home";
+          state.onbStep = null;
+          render();
+        } else {
+          state.authError = result.error_description || result.error || "Invalid email or password.";
+          state.authLoading = false;
+          render();
+        }
+      }
+    }
+
+    function saveSession(authResult, email, name) {
+      try {
+        localStorage.setItem("tb_session", JSON.stringify({
+          token: authResult.access_token,
+          refreshToken: authResult.refresh_token,
+          email: authResult.user?.email || email,
+          expiresAt: Date.now() + (authResult.expires_in || 3600) * 1000,
+        }));
+      } catch (e) {}
+    }
+
+    function loadSession() {
+      try {
+        const s = JSON.parse(localStorage.getItem("tb_session") || "null");
+        if (!s || !s.token) return null;
+        if (s.expiresAt && Date.now() > s.expiresAt) return null;
+        return s;
+      } catch { return null; }
+    }
+
+    function clearSession() {
+      localStorage.removeItem("tb_session");
+      state.authUser = null;
+      state.profile = null;
+    }
+
+    async function restoreSession() {
+      const session = loadSession();
+      if (!session) return;
+      state.authUser = { token: session.token, email: session.email };
+      state.profile = await SupabaseClient.getProfile(session.token);
+      if (state.profile) {
+        state.market = state.profile.country_code || "US";
+      }
+    }
+
     function settings() {
-      const options = Object.entries(markets).map(([id, market]) => {
-        const rateNote = id === "US" ? "US import tariffs (USITC HTS)" : id === "CA" ? "Canadian import tariffs (CBSA)" : "EU tariffs (TARIC — illustrative)";
-        return `<button class="market-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span>◎ ${market.name}</span><div style="font-size:9px;color:#7a8c83;margin-top:3px">${rateNote}</div></div><b>${id === state.market ? "✓" : ""}</b></button>`;
+      const marketOptions = Object.entries(markets).map(([id, market]) => {
+        const rateNote = id === "US" ? "USITC HTS" : id === "CA" ? "CBSA Customs Tariff" : "TARIC (illustrative)";
+        return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">◎ ${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`;
       }).join("");
-      return `<div class="screen">${header("Shopping market", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Your location</p><h1>Where are you shopping?</h1><p>We use this to show the correct tariff rates. Each country has its own import tariff schedule.</p></section><section class="settings-card"><p class="settings-label">Market</p>${options}</section><section class="settings-info">ⓘ ${state.market === "US" ? "Showing US import tariffs from the USITC Harmonized Tariff Schedule." : state.market === "CA" ? "Showing Canadian import tariffs from the CBSA Customs Tariff Schedule." : "EU tariffs are illustrative — connect to TARIC for verified rates."}</section></main>${nav()}</div>`;
+
+      // Account section — shows if logged in, otherwise shows login prompt
+      let accountSection;
+      if (state.authUser && state.profile) {
+        const p = state.profile;
+        const countryInfo = ONBOARDING_COUNTRIES.find(c => c.code === p.country_code);
+        accountSection = `<section class="settings-card"><p class="settings-label">Account</p>
+          <div class="account-row"><span class="label">Name</span><span class="value">${esc(p.display_name || "—")}</span></div>
+          <div class="account-row"><span class="label">Email</span><span class="value" style="font-size:11px">${esc(p.email || state.authUser.email || "—")}</span></div>
+          <div class="account-row"><span class="label">Country</span><span class="value">${countryInfo ? countryInfo.flag + " " + countryInfo.name : p.country_code || "—"}</span></div>
+          <div class="account-row"><span class="label">Member since</span><span class="value" style="font-size:11px">${p.created_at ? new Date(p.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—"}</span></div>
+        </section>
+        <button class="danger-btn" data-action="sign-out">Sign out</button>`;
+      } else {
+        accountSection = `<section class="settings-card"><p class="settings-label">Account</p>
+          <div style="padding:16px;text-align:center">
+            <p style="color:var(--muted);font-size:12px;margin:0 0 12px">Sign in to sync your scan history across devices.</p>
+            <button class="auth-btn" data-action="onb-signup">Create account</button>
+            <button class="browse-link" style="margin-top:10px;font-size:12px" data-action="onb-signin">Already have an account?</button>
+          </div>
+        </section>`;
+      }
+
+      return `<div class="screen">${header("Settings", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Preferences</p><h1>Settings.</h1></section>
+        ${accountSection}
+        <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">Tariff market</p><h2 style="font-size:15px">Country for tariff rates</h2></div></div>${marketOptions}</section>
+        <p class="disclaimer" style="margin-top:18px">ⓘ Tariff Buddy v1.0 · Rates are approximate consumer-level ranges.</p>
+      </main>${nav()}</div>`;
     }
     function render() {
-      const screens = { home, scanner, result, alternatives, history, settings, story: () => storyDetail(state.activeStory) };
+      const screens = { home, scanner, result, alternatives, history, settings, onboarding, story: () => storyDetail(state.activeStory) };
       app.innerHTML = screens[state.screen]();
       document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => action(button.dataset.action)));
       const productSearch = document.getElementById("product-search");
       if (productSearch) productSearch.addEventListener("keydown", event => { if (event.key === "Enter") action("result"); });
     }
     function action(value) {
+      // Onboarding navigation
+      if (value === "onb-signup") { state.onbStep = "signup"; state.authError = null; state.screen = "onboarding"; render(); return; }
+      if (value === "onb-signin") { state.onbStep = "signin"; state.authError = null; state.screen = "onboarding"; render(); return; }
+      if (value === "onb-welcome") { state.onbStep = "welcome"; state.authError = null; state.screen = "onboarding"; render(); return; }
+      if (value === "onb-skip") { state.onbStep = null; state.screen = "home"; render(); return; }
+      if (value.startsWith("onb-pick-country:")) { state.onbCountry = value.split(":")[1]; render(); return; }
+      if (value === "onb-finish") {
+        const cc = state.onbCountry || state.market;
+        state.market = cc;
+        // Save country to profile if logged in
+        if (state.authUser?.token) {
+          SupabaseClient.updateProfile({ country_code: cc }, state.authUser.token);
+        }
+        state.onbStep = null;
+        state.screen = "home";
+        render();
+        return;
+      }
+      if (value === "auth-submit") { handleAuthSubmit(); return; }
+      if (value === "sign-out") {
+        if (state.authUser?.token) SupabaseClient.signOut(state.authUser.token);
+        clearSession();
+        state.screen = "home";
+        render();
+        return;
+      }
       // Manual barcode lookup
       if (value === "manual-lookup") {
         const input = document.getElementById("manual-barcode");
@@ -769,6 +992,24 @@
         });
         localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 50)));
       } catch(e) {}
+      // Also save to Supabase if logged in
+      if (state.authUser?.token) {
+        const userId = state.profile?.id || state.authUser.userId;
+        SupabaseClient.saveScan({
+          user_id: userId,
+          barcode: result.barcode,
+          product_name: result.productName,
+          brand: result.brand,
+          country_code: result.countryCode,
+          country_name: result.countryName,
+          category: result.category,
+          tariff_rate: result.tariffRate,
+          tariff_mid: result.tariffParsed?.mid || null,
+          confidence: result.confidence,
+          origin_note: result.originNote,
+          has_product_data: result.hasProductData,
+        }, state.authUser.token);
+      }
     }
 
     // Load stories from Supabase on init (falls back to static data)
@@ -780,8 +1021,38 @@
       }
     }
 
-    render();
-    initDbStories();
+    // Init: restore session, show onboarding for new users
+    async function init() {
+      // Try to restore an existing session
+      await restoreSession();
+      if (state.authUser) {
+        // Logged in — go straight to home
+        render();
+      } else {
+        // First-time user (no onboarding seen, no session) → show welcome
+        const seenOnboarding = localStorage.getItem("tb_seen_onboarding");
+        if (!seenOnboarding) {
+          state.screen = "onboarding";
+          state.onbStep = "welcome";
+          render();
+        } else {
+          render();
+        }
+      }
+      initDbStories();
+    }
+
+    // Mark onboarding as seen when user skips or finishes
+    const originalAction = action;
+    action = function(value) {
+      const result = originalAction(value);
+      if (value === "onb-skip" || value === "onb-finish") {
+        localStorage.setItem("tb_seen_onboarding", "1");
+      }
+      return result;
+    };
+
+    init();
   </script>
 </body>
 </html>
