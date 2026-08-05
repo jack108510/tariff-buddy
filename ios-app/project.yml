@@ -20,6 +20,8 @@ settings:
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    DEVELOPMENT_TEAM: W6W5596HVA
+    CODE_SIGN_STYLE: Automatic
 
 targets:
   TariffBuddy:
@@ -30,3 +32,5 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wildrose.tariffbuddy
+        DEVELOPMENT_TEAM: W6W5596HVA
+        CODE_SIGN_STYLE: Automatic
