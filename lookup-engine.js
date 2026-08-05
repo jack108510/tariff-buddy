@@ -35,11 +35,21 @@ const ProductLookup = {
     const barcodeResult = BARCODE_PREFIXES.lookup(cleanBarcode);
     const countryCode = barcodeResult.countryCode;
 
-    // Step 3: Try Open Food Facts for product details
+    // Step 3: Try Open Food Facts for product details (food/beverage)
     const offResult = await this.fetchOpenFoodFacts(cleanBarcode);
 
+    // Step 3b: If OFF has no data, try UPCitemdb (covers electronics, home, clothing, etc.)
+    let upcResult = null;
+    if (!offResult) {
+      upcResult = await this.fetchUPCitemdb(cleanBarcode);
+    }
+
+    // Merge: prefer OFF for food (has origin data), UPCitemdb for everything else
+    const productData = offResult || upcResult;
+    const dataSource = offResult ? "openfoodfacts" : upcResult ? "upcitemdb" : null;
+
     // Step 4: Determine category
-    const category = this.guessCategory(offResult, countryCode);
+    const category = this.guessCategory(productData, countryCode, upcResult);
 
     // Step 5: Get tariff rate for country + category (market-aware)
     const tariffTable = this.getTariffTable();
@@ -48,8 +58,8 @@ const ProductLookup = {
     // Step 6: Build the result
     return {
       barcode: cleanBarcode,
-      productName: offResult?.product_name || null,
-      brand: offResult?.brand || null,
+      productName: productData?.product_name || null,
+      brand: productData?.brand || null,
       category,
       categoryLabel: this.categoryLabel(category),
       countryCode,
@@ -64,8 +74,12 @@ const ProductLookup = {
       tariffParsed: TARIFF_DATA.parseRate(tariff.rate),
       tariffConfidence: tariff.confidence,
       countryNotes: tariff.countryNotes,
-      hasProductData: !!offResult,
-      confidence: this.calculateConfidence(barcodeResult, offResult, tariff),
+      hasProductData: !!productData,
+      productImage: upcResult?.image || null,
+      productCategory: upcResult?.category || null,
+      merchantOffers: upcResult?.offers || [],
+      dataSource,
+      confidence: this.calculateConfidence(barcodeResult, productData, tariff),
     };
   },
 
@@ -95,6 +109,48 @@ const ProductLookup = {
   },
 
   /**
+   * Fetch from UPCitemdb (free trial, no key needed)
+   * Covers electronics, home goods, clothing, toys, etc.
+   * Rate limited: ~1 req/sec on trial tier
+   */
+  async fetchUPCitemdb(barcode) {
+    try {
+      const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.code !== "OK" || !data.items || !data.items.length) return null;
+
+      const item = data.items[0];
+      // Pick best image (prefer https, prefer larger)
+      let image = null;
+      if (item.images && item.images.length) {
+        image = item.images.find(u => u.includes("walmart") || u.includes("target") || u.includes("walgreens")) || item.images[0];
+      }
+
+      // Pick best merchant offer (lowest price from a known retailer)
+      let offers = [];
+      if (item.offers && item.offers.length) {
+        offers = item.offers
+          .filter(o => o.price && o.price > 0)
+          .sort((a, b) => a.price - b.price)
+          .slice(0, 3)
+          .map(o => ({ merchant: o.merchant, price: o.price, link: o.link }));
+      }
+
+      return {
+        product_name: item.title || null,
+        brand: item.brand || null,
+        category: item.category || null,
+        image,
+        offers,
+      };
+    } catch (e) {
+      return null; // Network error, rate limit, or CORS — fail gracefully
+    }
+  },
+
+  /**
    * Clean and validate a barcode
    */
   cleanBarcode(barcode) {
@@ -109,10 +165,27 @@ const ProductLookup = {
   },
 
   /**
-   * Guess product category from OFF data or barcode context
-   * Maps Open Food Facts categories to our category IDs
+   * Guess product category from OFF data, UPCitemdb data, or barcode context
+   * Maps product database categories to our category IDs
    */
-  guessCategory(offResult, countryCode) {
+  guessCategory(offResult, countryCode, upcResult) {
+    // UPCitemdb has a Google-style taxonomy: "Category > Subcategory > Item"
+    if (upcResult?.category) {
+      const cat = upcResult.category.toLowerCase();
+      if (cat.includes("electronic") || cat.includes("computer") || cat.includes("phone") || cat.includes("audio") || cat.includes("camera") || cat.includes("video game")) return "electronics";
+      if (cat.includes("cloth") || cat.includes("apparel") || cat.includes("shoe") || cat.includes("wear")) return "clothing";
+      if (cat.includes("toy") || cat.includes("game") || cat.includes("sport") || cat.includes("outdoor")) return "recreation";
+      if (cat.includes("health") || cat.includes("beauty") || cat.includes("personal care") || cat.includes("cosmetic")) return "health";
+      if (cat.includes("furniture") || cat.includes("bedding")) return "furniture";
+      if (cat.includes("garden") || cat.includes("lawn") || cat.includes("plant")) return "garden";
+      if (cat.includes("pet")) return "baby";
+      if (cat.includes("baby")) return "baby";
+      if (cat.includes("automotive") || cat.includes("vehicle") || cat.includes("auto")) return "mobility";
+      if (cat.includes("hardware") || cat.includes("tool") || cat.includes("building") || cat.includes("construction")) return "building";
+      if (cat.includes("home") || cat.includes("kitchen") || cat.includes("household")) return "home";
+      if (cat.includes("food") || cat.includes("beverage") || cat.includes("grocery") || cat.includes("snack")) return "food";
+    }
+
     if (!offResult || !offResult.categories) return "food"; // Default for food API
 
     const cats = offResult.categories.toLowerCase();
