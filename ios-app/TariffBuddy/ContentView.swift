@@ -49,9 +49,6 @@ struct WebView: UIViewRepresentable {
         config.allowsInlineMediaPlayback = true
         config.websiteDataStore = WKWebsiteDataStore.default()
 
-        // Set custom user agent so the web app knows it's running in the native app
-        config.applicationNameForUserAgent = "TariffBuddyNative/1.0"
-
         // Register message handler so JS can trigger native scanning
         config.userContentController.add(context.coordinator, name: "scanNative")
 

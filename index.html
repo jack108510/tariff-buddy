@@ -535,7 +535,7 @@
           <div class="price-rail"><div class="price-cell"><span>Category</span><b>${esc(r.categoryLabel)}</b></div><div class="price-cell extra"><span>Rate range</span><b>${esc(r.tariffRate)}</b></div><div class="price-cell total"><span>Mid-point</span><b>${rateMid}%</b></div></div>
           <p class="note" style="margin-top:8px">${r.countryNotes ? esc(r.countryNotes) : ""}</p></section>
         ${r.offOrigin ? `<section class="context-card"><p class="eyebrow">Verified origin</p><p style="font-size:11px;margin-top:8px;color:#4c7665">Open Food Facts lists this product's origin as: <strong>${esc(r.offOrigin)}</strong>${r.offManufacturer ? `<br>Manufactured in: ${esc(r.offManufacturer)}` : ""}</p></section>` : ""}
-        ${(r.merchantOffers && r.merchantOffers.length) ? `<section style="margin-top:13px"><div class="section-head"><div><p class="eyebrow">Retail prices</p><h2>What stores are charging</h2></div></div>${r.merchantOffers.map(o => `<a href="${esc(o.link)}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;justify-content:space-between;align-items:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;color:var(--ink)"><span style="font-weight:700;font-size:12px">${esc(o.merchant)}</span><strong style="color:#1f7255;font-size:14px">$${o.price.toFixed(2)}</strong></a>`).join("")}</section>` : ""}
+        ${(r.merchantOffers && r.merchantOffers.length) ? `<section style="margin-top:13px"><div class="section-head"><div><p class="eyebrow">Retail prices</p><h2>What stores are charging</h2></div></div>${r.merchantOffers.map(o => `<a href="${o.link && o.link.match(/^https?:\/\//) ? esc(o.link) : '#'}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:flex;justify-content:space-between;align-items:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;color:var(--ink)"><span style="font-weight:700;font-size:12px">${esc(o.merchant)}</span><strong style="color:#1f7255;font-size:14px">$${o.price.toFixed(2)}</strong></a>`).join("")}</section>` : ""}
         <section class="next-card"><span class="next-icon">$</span><div><p class="eyebrow">Best next move</p><h3>${rateMid > 10 ? "Compare a lower-cost option" : "Check local alternatives"}</h3><p>${rateMid > 10 ? "A similar product with different sourcing may cost less." : "Tariff impact is moderate — compare prices before buying."}</p></div><button data-action="alternatives">${arrow}</button></section>
         <p class="disclaimer">ⓘ ${confidenceLabel}. ${esc(r.originNote)}</p>
       </main>${nav()}</div>`;
@@ -770,7 +770,7 @@
       try {
         const s = JSON.parse(localStorage.getItem("tb_session") || "null");
         if (!s || !s.token) return null;
-        if (s.expiresAt && Date.now() > s.expiresAt) return null;
+        // Return session even if expired — restoreSession will attempt refresh
         return s;
       } catch { return null; }
     }
@@ -804,7 +804,6 @@
       try {
         state.profile = await SupabaseClient.getProfile(token);
         if (!state.profile) {
-          // Token is invalid or profile missing — don't leave half-logged-in
           localStorage.removeItem("tb_session");
           state.authUser = null;
           return;
@@ -812,11 +811,39 @@
         if (state.profile.country_code) {
           state.market = state.profile.country_code;
         }
+        // Fetch server-side scan history and merge with local
+        const serverScans = await SupabaseClient.getScanHistory(token);
+        if (serverScans && serverScans.length) {
+          mergeServerHistory(serverScans);
+        }
       } catch (e) {
-        // Network error — keep session but no profile
         state.authUser = null;
         localStorage.removeItem("tb_session");
       }
+    }
+
+    function mergeServerHistory(serverScans) {
+      try {
+        const local = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        const localBarcodes = new Set(local.map(s => s.barcode));
+        // Add server scans not already in local (convert to local format)
+        const newScans = serverScans
+          .filter(s => !localBarcodes.has(s.barcode))
+          .map(s => ({
+            barcode: s.barcode,
+            name: s.product_name,
+            brand: s.brand,
+            country: s.country_name,
+            flag: null,
+            rate: s.tariff_rate,
+            confidence: s.confidence,
+            date: s.scanned_at,
+          }));
+        if (newScans.length) {
+          const merged = [...local, ...newScans].sort((a, b) => new Date(b.date) - new Date(a.date));
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(merged.slice(0, 50)));
+        }
+      } catch (e) {}
     }
 
     function settings() {
@@ -965,7 +992,7 @@
           state.scanFound = true;
           render();
           addToHistory(result);
-        });
+        }).catch(lookupErrorHandler);
         return;
       }
       // Camera scan
@@ -992,15 +1019,15 @@
         state.lastLookupError = null;
         render();
         ProductLookup.lookup(barcode).then(result => {
-          state.scanResult = result;
-          state.scanFound = true;
-          state.screen = "result";
-          render();
-          addToHistory(result);
-        });
+        state.scanResult = result;
+        state.scanFound = true;
+        state.screen = "result";
+        render();
+        addToHistory(result);
+        }).catch(lookupErrorHandler);
         return;
-      }
-      if (value.startsWith("filter:")) { state.filter = value.split(":")[1]; render(); return; }
+        }
+        if (value.startsWith("filter:")) { state.filter = value.split(":")[1]; render(); return; }
       if (value.startsWith("market:")) {
         const cc = value.split(":")[1];
         state.market = cc;
@@ -1028,11 +1055,21 @@
           state.screen = "result";
           render();
           addToHistory(result);
-        });
+        }).catch(lookupErrorHandler);
         return;
       }
+      // Validate screen before setting
+      const validScreens = ["home", "scanner", "result", "alternatives", "history", "settings", "onboarding", "story"];
+      if (!validScreens.includes(value)) { state.screen = "home"; render(); return; }
       state.screen = value;
       if (value === "scanner") { state.scanFound = false; state.scanning = false; }
+      render();
+    }
+
+    function lookupErrorHandler(err) {
+      state.scanning = false;
+      state.scanFound = false;
+      state.lastLookupError = "Lookup failed. Check your connection and try again.";
       render();
     }
 
@@ -1060,14 +1097,14 @@
                 state.scanFound = true;
                 render();
                 addToHistory(result);
-              });
+              }).catch(lookupErrorHandler);
             }).catch(() => {
               ProductLookup.lookup(decodedText).then(result => {
                 state.scanResult = result;
                 state.scanFound = true;
                 render();
                 addToHistory(result);
-              });
+              }).catch(lookupErrorHandler);
             });
           },
           () => {} // Ignore per-frame errors

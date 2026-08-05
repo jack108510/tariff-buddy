@@ -107,7 +107,9 @@ const SupabaseClient = {
   async getScanHistory(accessToken) {
     if (!accessToken) return null;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_scans?select=*&order=scanned_at.desc&limit=50`, {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const userId = payload.sub;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_scans?select=*&order=scanned_at.desc&limit=50&user_id=eq.${userId}`, {
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${accessToken}`,
@@ -164,7 +166,9 @@ const SupabaseClient = {
   async getProfile(accessToken) {
     if (!accessToken) return null;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?select=id,email,display_name,country_code,currency,locale&limit=1`, {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const userId = payload.sub;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?select=id,email,display_name,country_code,currency,locale,created_at&id=eq.${userId}`, {
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${accessToken}`,
@@ -261,20 +265,19 @@ const SupabaseClient = {
 
   /**
    * Delete account — removes the user's profile row.
-   * The auth user is deleted via Supabase admin or cascade.
    */
   async deleteAccount(accessToken) {
     if (!accessToken) return false;
     try {
-      // Delete profile row (RLS restricts to own row)
-      await fetch(`${SUPABASE_URL}/rest/v1/tb_users?email=neq.impossible`, {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const userId = payload.sub;
+      await fetch(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
         method: "DELETE",
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${accessToken}`,
         },
       });
-      // Sign out after deletion
       await this.signOut(accessToken);
       return true;
     } catch (e) {
