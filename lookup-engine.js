@@ -88,8 +88,11 @@ const ProductLookup = {
    */
   async fetchOpenFoodFacts(barcode) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
       const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,brands,origins,manufacturing_places,countries,categories,quantity`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) return null;
       const data = await res.json();
       if (data.status !== 1 || !data.product) return null;
@@ -114,21 +117,36 @@ const ProductLookup = {
    * Rate limited: ~1 req/sec on trial tier
    */
   async fetchUPCitemdb(barcode) {
+    // Rate limit: max 1 request per second on trial tier
+    const now = Date.now();
+    const lastCall = this._lastUPCCall || 0;
+    if (now - lastCall < 1200) {
+      await new Promise(r => setTimeout(r, 1200 - (now - lastCall)));
+    }
+    this._lastUPCCall = Date.now();
+
+    // Cache: check localStorage for recent lookup
+    const cacheKey = `tb_upc_${barcode}`;
     try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+      if (cached && cached.cachedAt > now - 3600000) return cached.data; // 1hr cache
+    } catch (e) {}
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
       const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) return null;
       const data = await res.json();
       if (data.code !== "OK" || !data.items || !data.items.length) return null;
 
       const item = data.items[0];
-      // Pick best image (prefer https, prefer larger)
       let image = null;
       if (item.images && item.images.length) {
         image = item.images.find(u => u.includes("walmart") || u.includes("target") || u.includes("walgreens")) || item.images[0];
       }
-
-      // Pick best merchant offer (lowest price from a known retailer)
       let offers = [];
       if (item.offers && item.offers.length) {
         offers = item.offers
@@ -138,15 +156,20 @@ const ProductLookup = {
           .map(o => ({ merchant: o.merchant, price: o.price, link: o.link }));
       }
 
-      return {
+      const result = {
         product_name: item.title || null,
         brand: item.brand || null,
         category: item.category || null,
         image,
         offers,
       };
+
+      // Cache the result
+      try { localStorage.setItem(cacheKey, JSON.stringify({ data: result, cachedAt: now })); } catch (e) {}
+
+      return result;
     } catch (e) {
-      return null; // Network error, rate limit, or CORS — fail gracefully
+      return null;
     }
   },
 

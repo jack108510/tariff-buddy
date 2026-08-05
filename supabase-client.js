@@ -180,12 +180,15 @@ const SupabaseClient = {
 
   /**
    * Update user profile (display_name, country_code)
-   * PostgREST requires a filter — we use id=auth.uid() via RLS
+   * Uses explicit id filter for safety (belt + RLS suspenders)
    */
   async updateProfile(updates, accessToken) {
     if (!accessToken) return null;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?email=neq.impossible`, {
+      // Decode user ID from JWT for explicit filter
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const userId = payload.sub;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
         method: "PATCH",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -194,6 +197,45 @@ const SupabaseClient = {
           "Prefer": "return=minimal",
         },
         body: JSON.stringify(updates),
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /**
+   * Refresh an expired access token using the refresh token
+   */
+  async refreshToken(refreshToken) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Request password reset email
+   */
+  async resetPassword(email) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
       });
       return res.ok;
     } catch (e) {

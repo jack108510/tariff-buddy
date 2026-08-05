@@ -19,9 +19,14 @@ struct ContentView: View {
                 onBarcodeDetected: { barcode in
                     showScanner = false
                     // Pass the barcode to the web view's lookup engine
+                    // JSON-encode to prevent injection from malicious QR codes
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        guard let jsonData = try? JSONSerialization.data(withJSONObject: [barcode], options: []),
+                              let jsonBytes = String(data: jsonData, encoding: .utf8) else { return }
+                        // jsonBytes is ["barcode"] — extract the quoted string value
+                        let quoted = jsonBytes.dropFirst().dropLast() // removes [ and ]
                         webViewRef?.evaluateJavaScript(
-                            "window.tariffBuddyHandleBarcode && window.tariffBuddyHandleBarcode('\(barcode)')",
+                            "window.tariffBuddyHandleBarcode && window.tariffBuddyHandleBarcode(\(quoted))",
                             completionHandler: nil
                         )
                     }
@@ -42,8 +47,10 @@ struct WebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
-        // Use default data store but clear it on launch so we always get fresh content
         config.websiteDataStore = WKWebsiteDataStore.default()
+
+        // Set custom user agent so the web app knows it's running in the native app
+        config.applicationNameForUserAgent = "TariffBuddyNative/1.0"
 
         // Register message handler so JS can trigger native scanning
         config.userContentController.add(context.coordinator, name: "scanNative")
@@ -52,12 +59,8 @@ struct WebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         context.coordinator.onScanRequested = onScanRequested
 
-        // Clear all cached web data before loading
-        WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
-                                                   modifiedSince: Date(timeIntervalSince1970: 0)) {
-            let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10)
-            webView.load(request)
-        }
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10)
+        webView.load(request)
         onWebViewReady(webView)
         return webView
     }

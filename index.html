@@ -502,10 +502,8 @@
         ? `<img src="${esc(r.productImage)}" alt="${displayName}" style="width:65px;height:65px;object-fit:contain;border-radius:14px;background:#eef8f1" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="kettle" style="display:none">${productIcon}</div>`
         : `<div class="kettle">${productIcon}</div>`;
 
-      // Build price estimate if we have tariff data
-      const estimateBase = listed; // fallback price for demo
-      const estimateExtra = +(estimateBase * rateMid / 100).toFixed(2);
-      const estimateTotal = +(estimateBase + estimateExtra).toFixed(2);
+      // Use real merchant price if available, otherwise no fake price
+      const merchantPrice = r.merchantOffers?.length ? r.merchantOffers[0].price : null;
 
       // Domestic product — no tariff
       if (r.countryCode === "US") {
@@ -685,7 +683,8 @@
           <input class="auth-field" id="auth-password" type="password" placeholder="Password (min 6 characters)" autocomplete="${isSignup ? "new-password" : "current-password"}" required minlength="6" />
           <button class="auth-btn" type="submit" data-action="auth-submit" ${state.authLoading ? "disabled" : ""}>${state.authLoading ? "Please wait…" : cta}</button>
         </form>
-        <button class="browse-link" style="text-align:center;margin-top:16px;font-size:12px" data-action="${switchAction}">${switchText}</button>
+        ${!isSignup ? `<button class="browse-link" style="text-align:center;margin-top:12px;font-size:12px" data-action="forgot-password">Forgot password?</button>` : ""}
+        <button class="browse-link" style="text-align:center;margin-top:${isSignup ? "16px" : "8px"};font-size:12px" data-action="${switchAction}">${switchText}</button>
       </main></div>`;
     }
 
@@ -785,10 +784,38 @@
     async function restoreSession() {
       const session = loadSession();
       if (!session) return;
-      state.authUser = { token: session.token, email: session.email };
-      state.profile = await SupabaseClient.getProfile(session.token);
-      if (state.profile) {
-        state.market = state.profile.country_code || "US";
+
+      // Check if token is expired — if so, try refreshing
+      let token = session.token;
+      const isExpired = session.expiresAt && Date.now() > session.expiresAt - 60000; // 1 min buffer
+      if (isExpired && session.refreshToken) {
+        const refreshed = await SupabaseClient.refreshToken(session.refreshToken);
+        if (refreshed?.access_token) {
+          token = refreshed.access_token;
+          saveSession(refreshed, session.email);
+        } else {
+          // Refresh failed — clear session, user must sign in again
+          localStorage.removeItem("tb_session");
+          return;
+        }
+      }
+
+      state.authUser = { token, email: session.email };
+      try {
+        state.profile = await SupabaseClient.getProfile(token);
+        if (!state.profile) {
+          // Token is invalid or profile missing — don't leave half-logged-in
+          localStorage.removeItem("tb_session");
+          state.authUser = null;
+          return;
+        }
+        if (state.profile.country_code) {
+          state.market = state.profile.country_code;
+        }
+      } catch (e) {
+        // Network error — keep session but no profile
+        state.authUser = null;
+        localStorage.removeItem("tb_session");
       }
     }
 
@@ -878,9 +905,24 @@
         return;
       }
       if (value === "auth-submit") { handleAuthSubmit(); return; }
+      if (value === "forgot-password") {
+        const email = document.getElementById("auth-email")?.value?.trim();
+        if (!email) {
+          state.authError = "Enter your email above first, then tap Forgot password.";
+          render(); return;
+        }
+        state.authLoading = true;
+        render();
+        const ok = await SupabaseClient.resetPassword(email);
+        state.authLoading = false;
+        state.authError = ok ? "Password reset link sent to " + email + "." : "Could not send reset email. Check the address and try again.";
+        render();
+        return;
+      }
       if (value === "sign-out") {
         if (state.authUser?.token) SupabaseClient.signOut(state.authUser.token);
         clearSession();
+        localStorage.removeItem(HISTORY_KEY); // Clear local scans on sign-out
         state.screen = "home";
         render();
         return;
