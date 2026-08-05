@@ -294,6 +294,7 @@
   <script src="tariff-data.js"></script>
   <script src="barcode-data.js"></script>
   <script src="stories-data.js"></script>
+  <script src="supabase-client.js"></script>
   <script src="lookup-engine.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
@@ -316,7 +317,7 @@
       { id: "baby", icon: "♡", title: "Baby & pet essentials", exposure: "low", range: "3–14%", origin: ["EU", "CN", "CA"], impact: "A product-by-product comparison can be more useful than a category assumption.", detail: "Safety, compatibility, and personal needs should remain the primary criteria for essential products.", types: ["Pet supplies", "Feeding", "Care accessories"] },
       { id: "garden", icon: "♤", title: "Garden & outdoor", exposure: "medium", range: "5–24%", origin: ["CA", "MX", "CN"], impact: "Outdoor equipment and seasonal supplies may have comparable local options.", detail: "Seasonality and local availability can make a large difference in the final price for garden goods.", types: ["Hand tools", "Planters", "Outdoor lighting"] }
     ];
-    const state = { screen: "home", market: "US", scanFound: false, saved: false, query: "", filter: "all", active: "home", scanResult: null, scanning: false, manualBarcode: "", lastLookupError: null };
+    const state = { screen: "home", market: "US", scanFound: false, saved: false, query: "", filter: "all", active: "home", scanResult: null, scanning: false, manualBarcode: "", lastLookupError: null, activeStory: null, dbStories: null, authUser: null };
     const listed = 44.99;
     const app = document.getElementById("app");
     const HISTORY_KEY = "tariff-buddy-scan-history";
@@ -329,7 +330,8 @@
     const priceRail = () => `<div class="price-rail"><div class="price-cell"><span>Listed</span><b>${money(listed)}</b></div><div class="price-cell extra"><span>Possible extra</span><b>+${money(current().extra)}</b></div><div class="price-cell total"><span>Possible total</span><b>${money(listed + current().extra)}</b></div></div>`;
     const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Check</span></button><button class="scan-nav ${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["browse", "industry"].includes(state.screen) ? "active" : ""}" data-action="browse"><span class="nav-icon">◇</span><span>Browse</span></button><button class="${state.screen === "saved" ? "active" : ""}" data-action="saved"><span class="nav-icon">♧</span><span>Saved</span></button></nav>`;
     function home() {
-      const stories = TARIFF_STORIES.map(storyCard).join("");
+      const storiesData = state.dbStories || TARIFF_STORIES;
+      const stories = storiesData.map(storyCard).join("");
       const hist = getHistory();
       const lastScan = hist.length > 0 ? hist[0] : null;
       return `<div class="screen">${header("Tariff Buddy")}
@@ -363,7 +365,8 @@
     }
 
     function storyDetail(id) {
-      const story = TARIFF_STORIES.find(s => s.id === id);
+      const storiesData = state.dbStories || TARIFF_STORIES;
+      const story = storiesData.find(s => s.id === id);
       if (!story) return home();
       const tariff = TARIFF_DATA.lookup(story.origin === "MULTI" ? "CN" : story.origin, story.category);
       const flag = tariff.flag || "🌍";
@@ -668,7 +671,18 @@
         localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 50)));
       } catch(e) {}
     }
+
+    // Load stories from Supabase on init (falls back to static data)
+    async function initDbStories() {
+      const stories = await SupabaseClient.getStories();
+      if (stories && stories.length > 0) {
+        state.dbStories = stories;
+        if (state.screen === "home") render();
+      }
+    }
+
     render();
+    initDbStories();
   </script>
 </body>
 </html>
