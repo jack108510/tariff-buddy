@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0d4b38" />
+  <meta name="description" content="Tariff Buddy: a standalone scan-first household price-check prototype." />
+  <title>Tariff Buddy — Scan, understand, compare</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/logo-48.png" />
+  <style>
+    :root {
+      --ink: #102d25;
+      --deep: #0c3427;
+      --green: #16895f;
+      --green-2: #baf7d7;
+      --mint: #dffbe9;
+      --cream: #fbfcf8;
+      --paper: #f4f7f2;
+      --line: #dce5df;
+      --muted: #698077;
+      --warm: #f7e2d7;
+      --warm-ink: #a44a20;
+      --yellow: #f8e9a7;
+      --shadow: 0 18px 45px rgba(17, 60, 43, .13);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body { background: linear-gradient(110deg, #dff6e7, #f8faf7 49%, #e2ede7); color: var(--ink); font-family: var(--sans); }
+    button, input { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid #2ab77f; outline-offset: 3px; }
+
+    .stage { min-height: 100vh; display: grid; place-items: center; position: relative; overflow: hidden; padding: 36px; }
+    .stage:before { content: ""; position: fixed; inset: 0; opacity: .32; background-image: linear-gradient(90deg, rgba(18, 91, 61, .08) 1px, transparent 1px); background-size: 30px 30px; pointer-events: none; }
+    .stage-copy { position: fixed; left: clamp(26px, 6vw, 86px); top: 9vh; z-index: 1; }
+    .stage-copy b { color: var(--green); font-size: 20px; letter-spacing: -.8px; }
+    .stage-copy p, .stage-note { color: var(--muted); font-size: 13px; margin: 6px 0 0; max-width: 260px; }
+    .stage-note { position: fixed; right: clamp(26px, 6vw, 86px); bottom: 9vh; text-align: right; }
+
+    .phone { width: min(100%, 420px); height: min(880px, calc(100vh - 48px)); min-height: 650px; background: var(--cream); border: 8px solid #0b1713; border-radius: 46px; position: relative; overflow: hidden; box-shadow: 0 28px 70px rgba(10, 47, 35, .28); z-index: 2; }
+    .notch { width: 112px; height: 25px; border-radius: 0 0 16px 16px; background: #0b1713; position: absolute; top: 0; left: calc(50% - 56px); z-index: 20; }
+    #app { height: 100%; }
+    .screen { height: 100%; display: flex; flex-direction: column; background: var(--cream); }
+    .header { height: 74px; padding: 26px 18px 11px; display: grid; grid-template-columns: 96px 1fr 96px; align-items: center; gap: 8px; flex: none; position: relative; z-index: 3; }
+    .header h2 { margin: 0; font-size: 14px; text-align: center; letter-spacing: -.3px; }
+    .header-side { display: flex; justify-content: flex-end; min-width: 0; }
+    .brand { display: inline-flex; align-items: stretch; width: max-content; overflow: hidden; border-radius: 2px 9px 9px 2px; color: white; font-size: 10px; font-weight: 800; letter-spacing: -.3px; }
+    .brand span { background: #143b2e; padding: 6px 5px; }
+    .brand b { background: #208c62; padding: 6px 6px; }
+    .brand-logo { display: flex; align-items: center; gap: 7px; }
+    .brand-logo img { width: 32px; height: 32px; border-radius: 7px; object-fit: cover; }
+    .brand-logo b { font-size: 13px; font-weight: 800; letter-spacing: -.5px; color: var(--green); }
+    .circle-button, .market, .text-button { background: transparent; color: var(--ink); }
+    .circle-button { height: 35px; width: 35px; display: grid; place-items: center; border-radius: 11px; background: #f0f5f0; font-size: 21px; }
+    .market { display: inline-flex; gap: 5px; align-items: center; font-size: 11px; font-weight: 750; background: #f6f8f5; padding: 8px 9px; border-radius: 20px; border: 1px solid var(--line); white-space: nowrap; }
+    .text-button { font-weight: 750; font-size: 12px; color: #2d9270; white-space: nowrap; }
+
+    .scroll { overflow-y: auto; padding: 10px 18px 90px; scrollbar-width: none; }
+    .scroll::-webkit-scrollbar { display: none; }
+    .eyebrow { color: #237759; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .5px; line-height: 1; text-transform: uppercase; margin: 0; }
+    .prototype { display: inline-flex; align-items: center; gap: 6px; color: #39745e; font: 700 10px var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+    .prototype:before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #ef8f67; }
+    .muted { color: var(--muted); }
+    .disclaimer { display: flex; gap: 7px; color: var(--muted); font-size: 10px; line-height: 1.45; margin: 16px 2px 0; }
+
+    .check-hero { position: relative; overflow: hidden; padding: 22px; border-radius: 22px; background: linear-gradient(135deg, #d4fbe3, #c5f5d8); }
+    .check-hero:after { content: ""; position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border: 25px solid rgba(255,255,255,.18); border-radius: 50%; }
+    .check-hero h1 { position: relative; z-index: 1; font-size: 28px; letter-spacing: -1.5px; line-height: 1; margin: 0 0 6px; }
+    .check-hero > p { position: relative; z-index: 1; color: #386b57; font-size: 12px; line-height: 1.35; margin: 0 0 15px; max-width: 260px; }
+    .scan-primary { width: 100%; min-height: 60px; display: grid; grid-template-columns: 45px 1fr 18px; align-items: center; gap: 10px; padding: 8px; border-radius: 16px; background: #104a37; color: white; position: relative; z-index: 1; text-align: left; box-shadow: 0 7px 14px rgba(10,64,43,.15); }
+    .scan-primary .scan-icon { width: 42px; height: 42px; display: grid; place-items: center; background: #d4fae1; color: #11543f; border-radius: 11px; font-size: 21px; }
+    .scan-primary strong, .scan-primary small { display: block; }
+    .scan-primary strong { font-size: 13px; }
+    .scan-primary small { color: #b5dacb; font-size: 10px; margin-top: 3px; }
+    .search-row { position: relative; z-index: 1; margin-top: 10px; height: 44px; padding: 4px 5px 4px 13px; background: rgba(255,255,255,.9); border-radius: 13px; display: flex; align-items: center; gap: 8px; color: #658077; }
+    .search-row input { background: transparent; border: 0; min-width: 0; flex: 1; color: var(--ink); font-size: 11px; outline: none; }
+    .search-row button { background: #fff; color: #217557; padding: 8px 11px; border-radius: 10px; font-size: 11px; font-weight: 800; box-shadow: 0 1px 6px rgba(30,80,59,.1); }
+
+    .verdict { background: #fff; border: 1px solid var(--line); box-shadow: 0 9px 18px rgba(19,64,48,.06); border-radius: 20px; padding: 15px; margin: 14px 0 22px; }
+    .verdict-head, .section-head, .price-action { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .verdict h3 { margin: 6px 0 0; font-size: 17px; letter-spacing: -.8px; }
+    .status { display: inline-flex; align-items: center; gap: 4px; border-radius: 15px; padding: 6px 8px; background: #fcf4ee; color: #a55f3b; font-size: 9px; font-weight: 800; white-space: nowrap; }
+    .price-rail { border-top: 1px dashed #d6e0da; border-bottom: 1px dashed #d6e0da; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 10px 0; margin: 11px 0; }
+    .price-cell { min-height: 51px; padding: 8px; border-radius: 9px; background: #f3f7f4; }
+    .price-cell.extra { background: #fff0e7; color: var(--warm-ink); }
+    .price-cell.total { background: #cef8dc; color: #164d3b; }
+    .price-cell span { color: inherit; display: block; font: 800 8px var(--mono); letter-spacing: .4px; text-transform: uppercase; opacity: .8; }
+    .price-cell b { display: block; font-size: 14px; letter-spacing: -.6px; margin-top: 5px; }
+    .price-action { align-items: center; font-size: 10px; line-height: 1.4; color: #526d62; }
+    .price-action p { margin: 0; max-width: 220px; }
+    .price-action b { color: #1b5d46; }
+    .price-action button, .browse-link { background: transparent; color: #24795b; font-weight: 800; font-size: 10px; white-space: nowrap; }
+
+    .section-head { margin: 0 0 11px; align-items: center; }
+    .section-head h2 { font-size: 17px; letter-spacing: -.9px; margin: 7px 0 0; }
+    .method-list { border: 1px solid var(--line); background: #fff; border-radius: 18px; overflow: hidden; }
+    .method { width: 100%; display: grid; grid-template-columns: 38px 1fr 17px; gap: 10px; align-items: center; padding: 12px; background: #fff; border-bottom: 1px solid #edf1ed; color: var(--ink); text-align: left; }
+    .method:last-child { border-bottom: 0; }
+    .method-icon { height: 36px; width: 36px; display: grid; place-items: center; border-radius: 10px; background: #e7f9ee; color: #26815f; font-size: 18px; }
+    .method-icon.warm { color: #ad6a31; background: #fff7e8; }
+    .method strong, .method small { display: block; }
+    .method strong { font-size: 12px; }
+    .method small { color: #82948b; font-size: 9px; margin-top: 3px; }
+
+    .category-preview { margin-top: 23px; }
+    .category-preview > p { color: var(--muted); font-size: 11px; line-height: 1.35; margin: -3px 0 12px; }
+    .category-list { display: grid; gap: 8px; }
+    .category-mini { display: grid; grid-template-columns: 33px 1fr 14px; align-items: center; gap: 8px; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 14px; text-align: left; color: var(--ink); }
+    .category-mini .category-icon { height: 32px; width: 32px; display: grid; place-items: center; background: #edfbf2; border-radius: 10px; color: #268a64; font-size: 16px; }
+    .category-mini span, .category-mini b { display: block; }
+    .category-mini span { color: #936b24; font: 800 8px var(--mono); text-transform: uppercase; }
+    .category-mini b { font-size: 11px; margin-top: 3px; }
+
+    .bottom-nav { position: absolute; z-index: 9; bottom: 0; left: 0; right: 0; height: 62px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: stretch; padding: 0; background: rgba(255,255,255,.98); border-top: 1px solid #e8edea; backdrop-filter: blur(10px); }
+    .bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: transparent; color: #98a8a1; font-size: 9px; font-weight: 600; height: 100%; transition: color 120ms ease; border-top: 2px solid transparent; }
+    .bottom-nav button .nav-icon { font-size: 19px; line-height: 1; }
+    .bottom-nav button.active { color: #1f7a58; font-weight: 800; border-top-color: #1f7a58; }
+
+    .scanner { background: var(--deep); color: white; }
+    .scanner .header, .scanner .circle-button { color: white; }
+    .scanner .circle-button { background: rgba(255,255,255,.1); }
+    .scanner-body { padding: 15px 18px 90px; text-align: center; }
+    .camera-label { display: inline-flex; gap: 6px; align-items: center; border: 1px solid rgba(208,245,222,.3); color: #b8dccb; border-radius: 13px; padding: 6px 10px; font: 800 9px var(--mono); text-transform: uppercase; }
+    .viewfinder { height: 370px; margin: 14px 0 22px; border-radius: 23px; border: 1px solid rgba(218,253,231,.17); position: relative; overflow: hidden; background-color: #0f3a2c; background-image: linear-gradient(rgba(191,245,213,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(191,245,213,.12) 1px, transparent 1px), radial-gradient(circle at 50% 50%, rgba(52,225,157,.25), transparent 46%); background-size: 31px 31px, 31px 31px, auto; }
+    .finder-corner { position: absolute; width: 53px; height: 53px; border-color: #83efc1; border-style: solid; }
+    .tl { top: 28px; left: 28px; border-width: 4px 0 0 4px; border-radius: 17px 0 0; }
+    .tr { top: 28px; right: 28px; border-width: 4px 4px 0 0; border-radius: 0 17px 0 0; }
+    .bl { bottom: 28px; left: 28px; border-width: 0 0 4px 4px; border-radius: 0 0 0 17px; }
+    .br { bottom: 28px; right: 28px; border-width: 0 4px 4px 0; border-radius: 0 0 17px 0; }
+    .scan-line { position: absolute; left: 40px; right: 40px; height: 2px; top: 50%; background: #a2ffce; box-shadow: 0 0 18px 5px rgba(83,255,176,.68); animation: scan 2.2s ease-in-out infinite; }
+    @keyframes scan { 0%,100% { transform: translateY(-76px); opacity: .5; } 50% { transform: translateY(76px); opacity: 1; } }
+    .found { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #d8fae5; color: #11523c; padding: 12px 15px; min-width: 155px; border-radius: 14px; font-weight: 800; box-shadow: 0 10px 22px rgba(0,0,0,.24); }
+    .scanner h1 { font-size: 16px; margin: 0 0 6px; }
+    .scanner .caption { color: #9bb5a8; font-size: 11px; line-height: 1.45; margin: 0 auto 16px; max-width: 315px; }
+    .dark-action, .primary-action { width: 100%; min-height: 46px; border-radius: 14px; font-weight: 800; }
+    .dark-action { border: 1px solid rgba(233,255,242,.46); background: rgba(255,255,255,.08); color: white; }
+    .primary-action { margin-top: 9px; background: #27a979; color: white; }
+
+    .result-top { margin: 0 -18px 16px; padding: 26px 20px 19px; display: flex; gap: 15px; align-items: center; background: linear-gradient(135deg, #ddfbe7, #bff4d0); border-radius: 22px; }
+    .ring { flex: none; height: 82px; width: 82px; padding: 5px; border-radius: 50%; display: grid; place-content: center; text-align: center; color: white; background: conic-gradient(#16865f 0 74%, #ecf6ed 74% 100%); position: relative; }
+    .ring:before { content: ""; position: absolute; inset: 6px; border-radius: inherit; background: #16865f; }
+    .ring strong, .ring span { position: relative; z-index: 1; display: block; }
+    .ring strong { font-size: 15px; letter-spacing: -1px; }
+    .ring span { font: 700 7px var(--mono); text-transform: uppercase; opacity: .84; margin-top: 2px; }
+    .result-top h1 { margin: 6px 0 5px; font-size: 20px; letter-spacing: -1.1px; line-height: 1; }
+    .result-top p { margin: 0; color: #4c7665; font-size: 11px; line-height: 1.35; }
+    .product-card, .impact-card, .next-card, .alternative { background: #fff; border: 1px solid var(--line); border-radius: 18px; }
+    .product-card { padding: 14px; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; }
+    .kettle { height: 65px; width: 65px; display: grid; place-items: center; border-radius: 14px; background: #eef8f1; font-size: 38px; color: #729485; }
+    .product-card h3 { margin: 4px 0 3px; font-size: 17px; letter-spacing: -.7px; }
+    .product-card p { color: #74877e; font-size: 10px; margin: 0; }
+    .chips { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+    .chip { display: inline-flex; gap: 4px; align-items: center; background: #f2f7f3; color: #557267; padding: 4px 6px; border-radius: 7px; font-size: 9px; }
+    .impact-card { margin-top: 13px; padding: 16px; color: white; background: #104d3a; border-color: #104d3a; }
+    .impact-card .eyebrow { color: #b8e8cc; }
+    .impact-card h2 { font-size: 17px; margin: 7px 0 0; letter-spacing: -.8px; }
+    .impact-card .price-rail { border-color: rgba(255,255,255,.18); }
+    .impact-card .price-cell { color: var(--ink); }
+    .impact-card .note { color: #b8cfc4; font-size: 9px; line-height: 1.4; margin: 0; }
+    .next-card { margin-top: 13px; padding: 13px; display: grid; grid-template-columns: 38px 1fr 20px; align-items: center; gap: 10px; background: #eafbf1; border-color: #d5f3df; }
+    .next-card .next-icon { height: 36px; width: 36px; display: grid; place-items: center; background: #fff; border-radius: 10px; color: #278760; font-size: 18px; }
+    .next-card h3 { margin: 5px 0 3px; font-size: 13px; }
+    .next-card p:last-child { margin: 0; font-size: 9px; color: #617b70; line-height: 1.3; }
+    .next-card button { background: transparent; color: #217a58; font-size: 23px; }
+    .wide-action { width: 100%; margin-top: 13px; height: 48px; border-radius: 13px; background: #209264; color: white; font-size: 13px; font-weight: 800; }
+
+    .intro { padding: 8px 0 18px; }
+    .intro h1 { font-size: 27px; line-height: .98; letter-spacing: -1.5px; margin: 10px 0 8px; }
+    .intro p { color: var(--muted); font-size: 12px; line-height: 1.4; margin: 0; }
+    .alternative { padding: 13px; display: grid; grid-template-columns: 52px 1fr 35px; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .alternative .kettle { width: 52px; height: 52px; font-size: 29px; }
+    .alt-title { display: flex; gap: 7px; align-items: center; }
+    .alt-title h3 { margin: 0; font-size: 13px; letter-spacing: -.5px; }
+    .best { color: #396d2b; background: #e8f5c6; border-radius: 9px; padding: 4px 5px; font: 800 8px var(--mono); text-transform: uppercase; }
+    .alternative p { margin: 4px 0; color: #6f857a; font-size: 9px; }
+    .alternative strong { color: #1f7255; font-size: 14px; }
+    .alternative small { display: block; color: #7a8c83; font-size: 8px; margin-top: 3px; }
+    .save { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 10px; color: #388167; background: #eef8f1; font-size: 17px; }
+    .save.active { background: #e4f8e9; color: #199461; }
+    .method-strip { display: flex; gap: 9px; align-items: flex-start; margin-top: 14px; padding: 12px; color: #547268; background: #f2f8f4; border-radius: 13px; font-size: 10px; line-height: 1.4; }
+
+    .directory-search { height: 46px; border: 1px solid var(--line); background: white; display: flex; gap: 9px; align-items: center; padding: 0 12px; border-radius: 14px; color: #7a8d84; }
+    .directory-search input { min-width: 0; flex: 1; outline: 0; border: 0; color: var(--ink); font-size: 11px; }
+    .filters { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 14px; scrollbar-width: none; }
+    .filters::-webkit-scrollbar { display: none; }
+    .filters button { padding: 8px 10px; color: #658076; background: #fff; border: 1px solid var(--line); border-radius: 13px; font-size: 10px; font-weight: 750; white-space: nowrap; }
+    .filters button.active { color: white; background: #104d3a; border-color: #104d3a; }
+    .filters em { font-style: normal; opacity: .8; }
+    .directory-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .industry { min-height: 188px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); text-align: left; display: flex; flex-direction: column; }
+    .industry-top { display: flex; justify-content: space-between; gap: 5px; align-items: center; }
+    .industry-icon { height: 33px; width: 33px; display: grid; place-items: center; border-radius: 10px; background: #eafbf1; color: #25875f; font-size: 17px; }
+    .impact-pill { border-radius: 9px; padding: 4px 5px; background: #fff7d1; color: #8b6f19; font: 800 8px var(--mono); text-transform: uppercase; }
+    .impact-pill.high { background: #fff0e8; color: #b15c35; }
+    .impact-pill.low { background: #e9f5e9; color: #4c7a47; }
+    .industry h3 { font-size: 12px; letter-spacing: -.5px; margin: 10px 0 8px; }
+    .industry-label { color: #7a8c83; font: 800 8px var(--mono); text-transform: uppercase; }
+    .industry-rate { color: #b35c34; font-size: 17px; letter-spacing: -1px; margin: 4px 0; }
+    .industry small { color: #5f756b; font-size: 9px; line-height: 1.35; }
+    .industry .see { margin-top: auto; padding-top: 8px; color: #237d5b; font-size: 9px; font-weight: 800; }
+    .empty { text-align: center; padding: 40px 15px; color: var(--muted); background: #fff; border: 1px dashed var(--line); border-radius: 18px; }
+
+    .industry-hero { padding: 16px; background: linear-gradient(135deg, #d8fae5, #edfcee); border-radius: 20px; }
+    .industry-identity { display: flex; align-items: center; gap: 11px; }
+    .industry-identity .industry-icon { width: 45px; height: 45px; font-size: 23px; background: rgba(255,255,255,.65); }
+    .industry-hero h1 { margin: 6px 0 0; font-size: 25px; letter-spacing: -1.3px; }
+    .industry-hero > p { color: #4e7464; font-size: 11px; line-height: 1.4; margin: 13px 0 0; }
+    .industry-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 13px; }
+    .industry-tags span { padding: 5px 7px; border-radius: 8px; background: rgba(255,255,255,.65); color: #436e5b; font-size: 9px; }
+    .rate-panel { display: grid; grid-template-columns: 1fr 1fr; margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+    .rate-panel > div { padding: 13px; }
+    .rate-panel > div + div { border-left: 1px solid var(--line); background: #f5f9f6; }
+    .rate-panel strong { display: block; margin: 6px 0; color: #ae5c33; font-size: 25px; letter-spacing: -1.5px; }
+    .rate-panel span { display: block; color: #70847b; font-size: 9px; }
+    .context-card { margin-top: 12px; padding: 15px; background: #fff; border: 1px solid var(--line); border-radius: 16px; }
+    .context-card h2 { font-size: 15px; line-height: 1.15; letter-spacing: -.7px; margin: 8px 0; }
+    .context-card p:last-child { color: #698076; font-size: 11px; line-height: 1.42; margin: 0; }
+    .origin-list { display: flex; gap: 7px; flex-wrap: wrap; margin: 11px 0 16px; }
+    .origin { padding: 6px 8px; background: #f0f7f2; color: #496e5d; border-radius: 8px; font-size: 9px; }
+    .subcard { padding: 12px; border-radius: 14px; background: #fff; border: 1px solid var(--line); margin-top: 8px; }
+    .subcard-top { display: flex; justify-content: space-between; gap: 9px; }
+    .subcard h3 { margin: 0; font-size: 12px; }
+    .subcard strong { color: #a85630; font-size: 13px; }
+    .subcard p { color: #6e8278; font-size: 10px; line-height: 1.35; margin: 7px 0 0; }
+
+    .settings-card { overflow: hidden; border-radius: 18px; border: 1px solid var(--line); background: #fff; }
+    .settings-label { margin: 0; padding: 13px 14px 8px; color: #6b8176; font: 800 9px var(--mono); text-transform: uppercase; }
+    .market-option { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 14px; border-top: 1px solid #edf1ed; background: #fff; text-align: left; color: var(--ink); }
+    .market-option.selected { color: #1c805b; background: #f0fbf4; }
+    .market-option span { font-size: 13px; font-weight: 750; }
+    .settings-info { margin-top: 14px; padding: 13px; border-radius: 14px; background: #f1f7f3; color: #5c756a; font-size: 10px; line-height: 1.4; }
+
+    .recent-scan-btn { position: relative; z-index: 1; width: 100%; margin-top: 10px; padding: 11px 13px; border-radius: 13px; background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.5); display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 600; color: #386b57; }
+
+    /* ---------- STORY CARDS ---------- */
+    .stories-section { margin-top: 4px; }
+    .stories-header { display: flex; justify-content: space-between; align-items: center; margin: 0 0 12px; }
+    .stories-header h2 { font-size: 17px; letter-spacing: -.9px; margin: 0; }
+    .stories-header .live-dot { display: inline-flex; align-items: center; gap: 5px; color: #237759; font: 700 9px var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+    .stories-header .live-dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #ef8f67; animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+    .story-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 15px; margin-bottom: 9px; text-align: left; display: block; width: 100%; cursor: pointer; transition: transform 120ms ease; }
+    .story-card:active { transform: scale(.985); }
+    .story-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+    .story-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 7px; font: 800 8px var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+    .story-tag.high { background: #fff0e8; color: #b15c35; }
+    .story-tag.medium { background: #fff8df; color: #99731f; }
+    .story-tag.low { background: #e9f5e9; color: #4c7a47; }
+    .story-date { color: var(--muted); font: 700 9px var(--mono); }
+    .story-card h3 { font-size: 14.5px; line-height: 1.28; letter-spacing: -.3px; margin: 0 0 8px; color: var(--ink); }
+    .story-what { font-size: 11.5px; line-height: 1.45; color: #4c6358; margin: 0 0 11px; }
+    .story-affected { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 11px; }
+    .story-affected .chip { font-size: 9px; }
+    .story-action { display: flex; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 10.5px; line-height: 1.4; color: #526d62; }
+    .story-action b { color: #1b5d46; }
+
+    /* ---------- STORY DETAIL ---------- */
+    .story-detail-back { font-weight: 750; font-size: 12px; color: #2d9270; white-space: nowrap; }
+    .story-hero { margin: 0 -18px 16px; padding: 22px 20px; border-radius: 22px; background: linear-gradient(135deg, #ddfbe7, #bff4d0); }
+    .story-hero h1 { font-size: 24px; line-height: 1.05; letter-spacing: -1.2px; margin: 8px 0 8px; }
+    .story-hero p { color: #4c7665; font-size: 12px; line-height: 1.4; margin: 0; }
+    .story-block { margin-bottom: 16px; }
+    .story-block h2 { font-size: 14px; margin: 0 0 6px; letter-spacing: -.3px; }
+    .story-block p { font-size: 12px; line-height: 1.5; color: #4c6358; margin: 0; }
+    .story-rate-box { display: flex; gap: 10px; align-items: center; padding: 13px 15px; border-radius: 14px; background: var(--ink); color: white; margin-bottom: 16px; }
+    .story-rate-box .rate-big { font-size: 26px; font-weight: 800; letter-spacing: -1.5px; }
+    .story-rate-box .rate-label { font: 800 9px var(--mono); text-transform: uppercase; letter-spacing: .4px; opacity: .7; }
+    .story-rate-box .rate-flag { font-size: 30px; margin-left: auto; }
+
+    @media (max-width: 680px) {
+      body { background: var(--cream); }
+      .stage { padding: 0; min-height: 100svh; }
+      .stage:before, .stage-copy, .stage-note { display: none; }
+      .phone { width: 100%; height: 100svh; min-height: 0; max-height: none; border: 0; border-radius: 0; box-shadow: none; }
+      .notch { display: none; }
+      .header { padding-top: 15px; height: 62px; }
+    }
+    .auth-field { width: 100%; height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 13px; background: #fff; color: var(--ink); font-size: 13px; outline: none; margin-bottom: 10px; }
+    .auth-field:focus { border-color: var(--green); }
+    .auth-btn { width: 100%; height: 48px; border-radius: 14px; background: #104d3a; color: white; font-size: 14px; font-weight: 800; }
+    .auth-btn:disabled { opacity: .5; }
+    .auth-error { background: #fde8e0; color: #b04020; padding: 10px 14px; border-radius: 12px; font-size: 11px; margin-bottom: 12px; }
+    .country-option { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 8px; cursor: pointer; }
+    .country-option.selected { border-color: var(--green); background: #eef9f1; }
+    .country-option .flag { font-size: 26px; }
+    .country-option .name { font-weight: 700; font-size: 13px; }
+    .country-option .sub { font-size: 10px; color: var(--muted); }
+    .account-row { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-bottom: 1px solid #edf1ed; }
+    .account-row:last-child { border-bottom: 0; }
+    .account-row .label { font: 800 9px var(--mono); text-transform: uppercase; color: var(--muted); }
+    .account-row .value { font-size: 13px; font-weight: 700; }
+    .danger-btn { width: 100%; height: 46px; border-radius: 13px; background: #fde8e0; color: #b04020; font-size: 13px; font-weight: 800; margin-top: 12px; }
+    .danger-btn-subtle { width: 100%; height: 44px; border-radius: 12px; background: transparent; color: #b04020; font-size: 12px; font-weight: 700; border: 1px solid #f0d0c5; margin-top: 10px; }
+    .logout-btn { width: 100%; height: 46px; border-radius: 13px; background: #104d3a; color: white; font-size: 13px; font-weight: 800; margin-top: 16px; }
+    .settings-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: var(--green); flex-shrink: 0; }
+    .settings-profile { display: flex; align-items: center; gap: 13px; padding: 16px 14px; }
+    .settings-profile-info h3 { margin: 0; font-size: 15px; font-weight: 800; color: var(--ink); }
+    .settings-profile-info p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+    .settings-section-title { margin: 22px 0 10px; padding: 0 4px; font: 800 9px var(--mono); text-transform: uppercase; color: var(--muted); letter-spacing: .06em; }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div class="stage-copy"><b>Tariff Buddy</b><p>Mobile prototype · scan, understand, compare</p></div>
+    <div class="phone"><div class="notch"></div><div id="app"></div></div>
+    <p class="stage-note">Interactive product prototype. Live schedules, a real barcode camera, and retailer feeds are planned production features.</p>
+  </main>
+  <script src="tariff-data.js"></script>
+  <script src="ca-tariff-data.js"></script>
+  <script src="barcode-data.js"></script>
+  <script src="stories-data.js"></script>
+  <script src="supabase-client.js"></script>
+  <script src="lookup-engine.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const markets = {
+      US: { short: "U.S.", name: "United States", locale: "en-US", currency: "USD", extra: 4.06, saving: 9.99 },
+      CA: { short: "Canada", name: "Canada", locale: "en-CA", currency: "CAD", extra: 5.21, saving: 12.70 },
+      EU: { short: "EU", name: "European Union", locale: "de-DE", currency: "EUR", extra: 3.72, saving: 8.65 }
+    };
+    const categories = [
+      { id: "food", icon: "♧", title: "Food & beverages", exposure: "medium", range: "6–25%", origin: ["CA", "EU", "NZ"], impact: "Imported specialty groceries may be worth comparing with regional alternatives.", detail: "Some shelf-stable and specialty items can have a more visible landed cost than locally stocked basics.", types: ["Coffee & tea", "Snacks & pantry", "Specialty drinks"] },
+      { id: "home", icon: "⌂", title: "Home & kitchen", exposure: "high", range: "12–30%", origin: ["CN", "EU", "VN"], impact: "Cookware and home basics can be useful categories to price-check.", detail: "Product origin, metal content, and shipping route can all change the final price signal for home goods.", types: ["Kettles & coffee", "Cookware", "Small storage"] },
+      { id: "electronics", icon: "▣", title: "Electronics & small appliances", exposure: "medium", range: "7–25%", origin: ["CN", "KR", "VN"], impact: "Small electronics are useful to compare across retailers before replacing.", detail: "Components and assembly routes vary substantially between otherwise similar electronics.", types: ["Phone accessories", "Small appliances", "Computer peripherals"] },
+      { id: "clothing", icon: "♢", title: "Clothing & footwear", exposure: "high", range: "9–32%", origin: ["VN", "BD", "CN"], impact: "Basics may have alternatives across local stock and delivery routes.", detail: "Apparel product sourcing can vary by brand, season, and seller, even for near-identical items.", types: ["Shoes", "Outerwear", "Everyday basics"] },
+      { id: "mobility", icon: "◉", title: "Vehicles & mobility", exposure: "medium", range: "4–18%", origin: ["JP", "DE", "MX"], impact: "Parts and accessories may be worth comparing by origin and local availability.", detail: "Vehicle pricing is influenced by many factors beyond border measures, including production and dealership stock.", types: ["Replacement parts", "Bike accessories", "Car care"] },
+      { id: "building", icon: "⌁", title: "Building & home improvement", exposure: "high", range: "10–28%", origin: ["CA", "MX", "CN"], impact: "Tools and renovation materials are helpful categories for a second price check.", detail: "Materials-heavy products may show more variability when origin and supply routes change.", types: ["Power tools", "Hardware", "Fixtures"] },
+      { id: "health", icon: "✚", title: "Health & personal care", exposure: "low", range: "2–12%", origin: ["EU", "JP", "KR"], impact: "Compare exact product sizes and locally stocked equivalents before switching.", detail: "Regulated health items have product-specific considerations; this prototype does not assess medical suitability.", types: ["Skin care", "Personal devices", "Hygiene"] },
+      { id: "furniture", icon: "▤", title: "Furniture & household goods", exposure: "medium", range: "6–22%", origin: ["CN", "VN", "CA"], impact: "Large household purchases can benefit from comparing fulfillment routes.", detail: "Freight, assembly, and availability can be more material than a headline range for bulky purchases.", types: ["Lighting", "Storage", "Home decor"] },
+      { id: "recreation", icon: "◇", title: "Toys & recreation", exposure: "medium", range: "5–20%", origin: ["CN", "VN", "EU"], impact: "Seasonal or gift purchases may have substitutes across local stock.", detail: "Recreation products often have many similar alternatives with different origin and delivery profiles.", types: ["Games", "Sporting goods", "Hobby supplies"] },
+      { id: "materials", icon: "▥", title: "Industrial materials", exposure: "high", range: "11–35%", origin: ["CA", "MX", "CN"], impact: "Materials and inputs may flow through to tools, repairs, and project costs.", detail: "These category signals are general context—not a forecast of a specific contractor or retail quote.", types: ["Fasteners", "Metal goods", "Workshop supplies"] },
+      { id: "baby", icon: "♡", title: "Baby & pet essentials", exposure: "low", range: "3–14%", origin: ["EU", "CN", "CA"], impact: "A product-by-product comparison can be more useful than a category assumption.", detail: "Safety, compatibility, and personal needs should remain the primary criteria for essential products.", types: ["Pet supplies", "Feeding", "Care accessories"] },
+      { id: "garden", icon: "♤", title: "Garden & outdoor", exposure: "medium", range: "5–24%", origin: ["CA", "MX", "CN"], impact: "Outdoor equipment and seasonal supplies may have comparable local options.", detail: "Seasonality and local availability can make a large difference in the final price for garden goods.", types: ["Hand tools", "Planters", "Outdoor lighting"] }
+    ];
+    const state = { screen: "home", market: "US", scanFound: false, saved: false, query: "", filter: "all", active: "home", scanResult: null, scanning: false, manualBarcode: "", lastLookupError: null, activeStory: null, dbStories: null, authUser: null, profile: null, onbStep: null, authError: null, authLoading: false };
+    const listed = 44.99;
+    const app = document.getElementById("app");
+    const HISTORY_KEY = "tariff-buddy-scan-history";
+    const esc = value => String(value).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c]);
+    const money = value => new Intl.NumberFormat(markets[state.market].locale, { style: "currency", currency: markets[state.market].currency }).format(value);
+    const current = () => markets[state.market];
+    const activeCategory = () => categories.find(category => category.id === state.active) || categories[1];
+    const arrow = "›";
+    const header = (title, options = {}) => `<header class="header">${options.back ? `<button class="circle-button" data-action="${options.back}" aria-label="Go back">‹</button>` : `<div class="brand-logo"><img src="assets/logo-48.png" alt="Tariff Buddy" /></div>`}<h2>${title}</h2><div class="header-side">${options.example ? `<button class="text-button" data-action="result">Try example</button>` : options.market === false ? "" : `<button class="market" data-action="settings">◎ ${current().short} ${arrow}</button>`}</div></header>`;
+    const priceRail = () => `<div class="price-rail"><div class="price-cell"><span>Listed</span><b>${money(listed)}</b></div><div class="price-cell extra"><span>Possible extra</span><b>+${money(current().extra)}</b></div><div class="price-cell total"><span>Possible total</span><b>${money(listed + current().extra)}</b></div></div>`;
+    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Home</span></button><button class="${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["history", "story"].includes(state.screen) ? "active" : ""}" data-action="history"><span class="nav-icon">≣</span><span>History</span></button><button class="${["settings"].includes(state.screen) ? "active" : ""}" data-action="settings"><span class="nav-icon">☰</span><span>Settings</span></button></nav>`;
+    function home() {
+      const storiesData = state.dbStories || TARIFF_STORIES;
+      const stories = storiesData.map(storyCard).join("");
+      const hist = getHistory();
+      const lastScan = hist.length > 0 ? hist[0] : null;
+      return `<div class="screen">${header("Tariff Buddy")}
+        <main class="scroll" style="padding-top:4px">
+          <section class="check-hero">
+            <h1>Will it cost more?</h1>
+            <p>Scan any barcode. See the tariff impact instantly.</p>
+            <button class="scan-primary" data-action="scanner"><span class="scan-icon">▣</span><span><strong>Scan a product</strong><small>Point your camera at any barcode</small></span><i>${arrow}</i></button>
+            ${lastScan ? `<button class="recent-scan-btn" data-action="result"><span>${lastScan.flag || "▣"} Last: ${esc((lastScan.name || lastScan.country || "Product").substring(0,20))}</span><span style="color:var(--green);font-weight:800">${esc(lastScan.rate || "?")}</span></button>` : `<label class="search-row"><span>⌕</span><input id="product-search" placeholder="Or enter a barcode number" inputmode="numeric" aria-label="Search a product" /><button data-action="manual-home-lookup">Check</button></label>`}
+          </section>
+
+          <section class="stories-section">
+            <div class="stories-header">
+              <h2>What's changing</h2>
+              <span class="live-dot">Updated</span>
+            </div>
+            ${stories}
+          </section>
+        </main>${nav()}</div>`;
+    }
+
+    function storyCard(story) {
+      return `<button class="story-card" data-action="story:${story.id}">
+        <div class="story-card-header">
+          <span class="story-tag ${story.severity}">${esc(story.tag)}</span>
+          <span class="story-date">${esc(formatStoryDate(story.date))}</span>
+        </div>
+        <h3>${esc(story.headline)}</h3>
+        <p class="story-what">${esc(story.what.substring(0, 100))}${story.what.length > 100 ? "…" : ""}</p>
+      </button>`;
+    }
+
+    function storyDetail(id) {
+      const storiesData = state.dbStories || TARIFF_STORIES;
+      const story = storiesData.find(s => s.id === id);
+      if (!story) return home();
+      const tariffTable = (state.market === "CA" && typeof CA_TARIFF_DATA !== "undefined") ? CA_TARIFF_DATA : TARIFF_DATA;
+      const tariff = tariffTable.lookup(story.origin === "MULTI" ? "CN" : story.origin, story.category);
+      const flag = tariff.flag || "🌍";
+      const parsed = TARIFF_DATA.parseRate(tariff.rate);
+      return `<div class="screen">${header(story.tag, { back: "home" })}
+        <main class="scroll">
+          <section class="story-hero">
+            <span class="story-tag ${story.severity}">${esc(story.tag)}</span>
+            <h1>${esc(story.headline)}</h1>
+            <p>${esc(formatStoryDate(story.date))}</p>
+          </section>
+
+          <div class="story-rate-box">
+            <div>
+              <div class="rate-label">Tariff range</div>
+              <div class="rate-big">${esc(tariff.rate)}</div>
+            </div>
+            <div class="rate-flag">${flag}</div>
+          </div>
+
+          <div class="story-block">
+            <h2>What happened</h2>
+            <p>${esc(story.what)}</p>
+          </div>
+
+          <div class="story-block">
+            <h2>What gets more expensive</h2>
+            <p>${esc(story.affected)}</p>
+          </div>
+
+          <div class="story-block">
+            <h2 style="color:#1b5d46">What you can do</h2>
+            <p>${esc(story.action)}</p>
+          </div>
+
+          <section class="next-card" style="margin-top:16px">
+            <span class="next-icon">▣</span>
+            <div>
+              <p class="eyebrow">Check a specific product</p>
+              <h3>Scan something you're buying</h3>
+              <p>See the real tariff rate for any product in this category.</p>
+            </div>
+            <button data-action="scanner">${arrow}</button>
+          </section>
+          <button class="wide-action" data-action="scanner">Scan a product ${arrow}</button>
+
+          <p class="disclaimer">ⓘ Sources: ${story.sources.map(esc).join(", ")}. Rates are approximate consumer-level ranges.</p>
+        </main>${nav()}</div>`;
+    }
+
+    function formatStoryDate(dateStr) {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffDays = Math.floor((now - d) / 86400000);
+      if (diffDays === 0) return "Today";
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return diffDays + "d ago";
+      if (diffDays < 30) return Math.floor(diffDays / 7) + "w ago";
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+      catch { return []; }
+    }
+    function scanner() {
+      if (state.scanning && state.scanFound) {
+        // Result found — show detected state
+        return `<div class="screen scanner">${header("Scan an item", { back: "home", market: false })}<main class="scanner-body"><span class="camera-label">▣ Barcode detected</span><div class="viewfinder"><span class="finder-corner tl"></span><span class="finder-corner tr"></span><span class="finder-corner bl"></span><span class="finder-corner br"></span><span class="scan-line"></span><div class="found">✓ ${state.scanResult?.productName ? esc(state.scanResult.productName.substring(0, 24)) : "Product found"}</div></div><h1>Barcode detected</h1><p class="caption">Tap below to see the tariff impact for this product.</p><button class="dark-action" data-action="scan-more">Scan another</button><button class="primary-action" data-action="result">See your price check ${arrow}</button></main>${nav()}</div>`;
+      }
+      if (state.scanning) {
+        // Scanning in progress — show loading
+        return `<div class="screen scanner">${header("Scan an item", { back: "home", market: false })}<main class="scanner-body"><span class="camera-label">▣ Scanning…</span><div class="viewfinder"><span class="finder-corner tl"></span><span class="finder-corner tr"></span><span class="finder-corner bl"></span><span class="finder-corner br"></span><span class="scan-line"></span><div class="found" style="font-size:11px">Looking up product…</div></div><h1>Scanning barcode</h1><p class="caption">Checking product database and tariff rates…</p></main>${nav()}</div>`;
+      }
+      // Idle — show camera + manual entry
+      return `<div class="screen scanner">${header("Scan an item", { back: "home", market: false })}<main class="scanner-body">
+        <span class="camera-label">▣ Camera</span>
+        <div class="viewfinder" id="scan-viewfinder"><span class="finder-corner tl"></span><span class="finder-corner tr"></span><span class="finder-corner bl"></span><span class="finder-corner br"></span><span class="scan-line"></span></div>
+        <h1>Place a barcode in the frame</h1>
+        <p class="caption">Point your camera at any product barcode. Or enter the number manually below.</p>
+        <button class="dark-action" data-action="start-camera">Start camera scan</button>
+        <div style="margin-top:14px">
+          <label class="search-row" style="background:rgba(255,255,255,.12);color:#9bb5a8;border:1px solid rgba(255,255,255,.15)"><span style="color:#9bb5a8">⌕</span><input id="manual-barcode" placeholder="Enter barcode number" inputmode="numeric" aria-label="Enter barcode manually" style="color:white" /><button data-action="manual-lookup" style="background:#27a979;color:white">Check</button></label>
+        </div>
+        ${state.lastLookupError ? `<p class="caption" style="color:#ef8f67;margin-top:10px">${esc(state.lastLookupError)}</p>` : ""}
+      </main>${nav()}</div>`;
+    }
+    function result() {
+      // If we have a real scan result, show it
+      if (state.scanResult && !state.scanResult.error) {
+        return resultReal(state.scanResult);
+      }
+      // Fallback to the demo kettle result
+      return `<div class="screen">${header("Your price check", { back: "home" })}<main class="scroll"><section class="result-top"><div class="ring"><strong>+${money(current().extra)}</strong><span>possible extra</span></div><div><span class="prototype">Demo result</span><h1>Worth comparing before you buy.</h1><p>This is a sample. Scan a real product for live data.</p></div></section><section class="product-card"><div class="kettle">♨</div><div><p class="eyebrow">Demo product</p><h3>Electric kettle</h3><p>1.7 L stainless steel</p><div class="chips"><span class="chip">▣ Home & kitchen</span><span class="chip">◎ Imported</span></div></div></section><section class="impact-card"><div class="section-head"><div><p class="eyebrow">Illustrative price rail</p><h2>Possible checkout change</h2></div><span>ⓘ</span></div>${priceRail()}<p class="note">ⓘ Prototype figures only. Scan a real barcode for actual data.</p></section><section class="next-card"><span class="next-icon">$</span><div><p class="eyebrow">Best next move</p><h3>Scan a real product</h3><p>Get real tariff data by scanning any barcode.</p></div><button data-action="scanner">${arrow}</button></section><button class="wide-action" data-action="scanner">Scan a product ${arrow}</button></main>${nav()}</div>`;
+    }
+
+    function resultReal(r) {
+      const confidenceLabel = { high: "High confidence", medium: "Medium confidence", low: "Low confidence" }[r.confidence] || "Estimate";
+      const confidenceColor = { high: "#4c7a47", medium: "#8b6f19", low: "#b15c35" }[r.confidence] || "#8b6f19";
+      const flag = r.countryFlag || "🌍";
+      const productIcon = r.category === "food" ? "♨" : r.category === "electronics" ? "▣" : r.category === "clothing" ? "♢" : r.category === "home" ? "⌂" : "▣";
+      const displayName = r.productName ? esc(r.productName.substring(0, 40)) : "Unknown product";
+      const displayBrand = r.brand ? esc(r.brand.split(",")[0].substring(0, 20)) : "";
+      const originText = r.offOrigin ? esc(r.offOrigin) : r.countryName;
+      const rateMid = r.tariffParsed?.mid || 0;
+      const sourceLabel = r.dataSource === "upcitemdb" ? "Product found" : r.dataSource === "openfoodfacts" ? "Food database match" : "Barcode result";
+      const hasImage = !!r.productImage;
+      const productVisual = hasImage
+        ? `<img src="${esc(r.productImage)}" alt="${displayName}" style="width:65px;height:65px;object-fit:contain;border-radius:14px;background:#eef8f1" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="kettle" style="display:none">${productIcon}</div>`
+        : `<div class="kettle">${productIcon}</div>`;
+
+      // Build price estimate if we have tariff data
+      const estimateBase = listed; // fallback price for demo
+      const estimateExtra = +(estimateBase * rateMid / 100).toFixed(2);
+      const estimateTotal = +(estimateBase + estimateExtra).toFixed(2);
+
+      // Domestic product — no tariff
+      if (r.countryCode === "US") {
+        return `<div class="screen">${header("Price check", { back: "home" })}<main class="scroll">
+          <section class="result-top"><div class="ring" style="background:conic-gradient(#4c7a47 0 100%)"><strong>${flag}</strong><span>domestic</span></div><div><span class="prototype" style="color:#4c7a47">No tariff impact</span><h1>Likely a domestic product.</h1><p>This barcode is registered in the United States. No import tariff expected.</p></div></section>
+          <section class="product-card">${productVisual}<div><p class="eyebrow">${sourceLabel}</p><h3>${displayName}</h3><p>${displayBrand || r.categoryLabel}</p><div class="chips"><span class="chip">${flag} United States</span>${r.brand ? `<span class="chip">${esc(r.brand.split(",")[0])}</span>` : ""}</div></div></section>
+          <section class="impact-card" style="background:#1a5c43"><div class="section-head"><div><p class="eyebrow">Tariff status</p><h2>No import tariff</h2></div></div><p class="note" style="margin-top:8px">${esc(r.originNote)}</p></section>
+          <section class="context-card"><p class="eyebrow">Product details</p><p style="font-size:11px;line-height:1.5;color:#698076;margin-top:8px">${r.dataSource === "upcitemdb" ? "Product identified via barcode database." : r.hasProductData ? `Found in Open Food Facts database. ${r.offManufacturer ? "Manufactured in " + esc(r.offManufacturer) + "." : ""}` : "Product not in food database. Origin based on barcode prefix."}</p></section>
+          <p class="disclaimer">ⓘ Confidence: ${confidenceLabel}. ${esc(r.originNote)}</p>
+        </main>${nav()}</div>`;
+      }
+
+      // Book — no tariff
+      if (r.isBook) {
+        return `<div class="screen">${header("Price check", { back: "home" })}<main class="scroll">
+          <section class="result-top"><div class="ring" style="background:conic-gradient(#4c7a47 0 100%)"><strong>📚</strong><span>book</span></div><div><span class="prototype" style="color:#4c7a47">No tariff impact</span><h1>This is a book.</h1><p>Books (ISBN barcodes) aren't subject to typical import tariffs.</p></div></section>
+          <p class="disclaimer" style="margin-top:16px">ⓘ Barcode prefix: ${r.barcode?.substring(0,3)} (ISBN)</p>
+        </main>${nav()}</div>`;
+      }
+
+      // Imported product — show tariff impact
+      const ringPct = Math.min(rateMid, 35);
+      const ringColor = ringPct > 15 ? "#d9703c" : ringPct > 5 ? "#d6ae2b" : "#16895f";
+
+      return `<div class="screen">${header("Price check", { back: "home" })}<main class="scroll">
+        <section class="result-top"><div class="ring" style="background:conic-gradient(${ringColor} 0 ${Math.min(ringPct*2.5,100)}%, #ecf6ed ${Math.min(ringPct*2.5,100)}% 100%)"><strong style="color:${ringColor}">${rateMid}%</strong><span>est. tariff</span></div><div><span class="prototype" style="color:${confidenceColor}">${confidenceLabel}</span><h1>${rateMid > 10 ? "Worth comparing before you buy." : rateMid > 0 ? "Mild price impact possible." : "Minimal tariff impact."}</h1><p>Origin: ${flag} ${esc(originText)}</p></div></section>
+        <section class="product-card">${productVisual}<div><p class="eyebrow">${sourceLabel}</p><h3>${displayName}</h3><p>${displayBrand || r.categoryLabel}</p><div class="chips"><span class="chip">${flag} ${esc(r.countryName)}</span><span class="chip">${esc(r.categoryLabel)}</span>${r.brand ? `<span class="chip">${esc(r.brand.split(",")[0].substring(0,15))}</span>` : ""}</div></div></section>
+        <section class="impact-card"><div class="section-head"><div><p class="eyebrow">Tariff rate range</p><h2>${esc(r.tariffRate)}</h2></div></div>
+          <div class="price-rail"><div class="price-cell"><span>Category</span><b>${esc(r.categoryLabel)}</b></div><div class="price-cell extra"><span>Rate range</span><b>${esc(r.tariffRate)}</b></div><div class="price-cell total"><span>Mid-point</span><b>${rateMid}%</b></div></div>
+          <p class="note" style="margin-top:8px">${r.countryNotes ? esc(r.countryNotes) : ""}</p></section>
+        ${r.offOrigin ? `<section class="context-card"><p class="eyebrow">Verified origin</p><p style="font-size:11px;margin-top:8px;color:#4c7665">Open Food Facts lists this product's origin as: <strong>${esc(r.offOrigin)}</strong>${r.offManufacturer ? `<br>Manufactured in: ${esc(r.offManufacturer)}` : ""}</p></section>` : ""}
+        ${(r.merchantOffers && r.merchantOffers.length) ? `<section style="margin-top:13px"><div class="section-head"><div><p class="eyebrow">Retail prices</p><h2>What stores are charging</h2></div></div>${r.merchantOffers.map(o => `<a href="${esc(o.link)}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;justify-content:space-between;align-items:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:8px;color:var(--ink)"><span style="font-weight:700;font-size:12px">${esc(o.merchant)}</span><strong style="color:#1f7255;font-size:14px">$${o.price.toFixed(2)}</strong></a>`).join("")}</section>` : ""}
+        <section class="next-card"><span class="next-icon">$</span><div><p class="eyebrow">Best next move</p><h3>${rateMid > 10 ? "Compare a lower-cost option" : "Check local alternatives"}</h3><p>${rateMid > 10 ? "A similar product with different sourcing may cost less." : "Tariff impact is moderate — compare prices before buying."}</p></div><button data-action="alternatives">${arrow}</button></section>
+        <p class="disclaimer">ⓘ ${confidenceLabel}. ${esc(r.originNote)}</p>
+      </main>${nav()}</div>`;
+    }
+    function alternatives() {
+      const r = state.scanResult;
+      // If no real scan result, show the demo alternatives (honest)
+      if (!r || r.error || !r.hasProductData) {
+        return `<div class="screen">${header("Better buys", { back: "result" })}<main class="scroll"><section class="intro"><span class="prototype">Demo comparisons</span><h1>Scan a product first.</h1><p>After you scan a real barcode, this screen shows lower-tariff alternatives by country of origin.</p></section><section class="next-card"><span class="next-icon">▣</span><div><p class="eyebrow">Get real data</p><h3>Scan a product</h3><p>See how switching origin countries could reduce tariff impact.</p></div><button data-action="scanner">${arrow}</button></section><button class="wide-action" data-action="scanner">Scan a product ${arrow}</button></main>${nav()}</div>`;
+      }
+
+      // Real scan result — show tariff comparison across origins
+      const tariffTable = ProductLookup.getTariffTable();
+      const category = r.category;
+      const scannedOrigin = r.countryCode;
+      const scannedRate = r.tariffParsed?.mid || 0;
+
+      // Get rates for this category from different origins
+      const originRates = [
+        { code: "US", flag: "🇺🇸", name: "United States", rate: 0 },
+        { code: "MX", flag: "🇲🇽", name: "Mexico", rate: null },
+        { code: "CA", flag: "🇨🇦", name: "Canada", rate: null },
+        { code: "VN", flag: "🇻🇳", name: "Vietnam", rate: null },
+        { code: "KR", flag: "🇰🇷", name: "South Korea", rate: null },
+        { code: "JP", flag: "🇯🇵", name: "Japan", rate: null },
+        { code: "DE", flag: "🇩🇪", name: "Germany", rate: null },
+        { code: "CN", flag: "🇨🇳", name: "China", rate: null },
+      ].map(o => {
+        if (o.code === "US") return { ...o, parsed: { mid: 0, range: "0%" } };
+        const t = tariffTable.lookup(o.code, category);
+        const mid = TARIFF_DATA.parseRate(t.rate).mid;
+        return { ...o, rate: t.rate, parsed: { mid, range: t.rate } };
+      }).sort((a, b) => a.parsed.mid - b.parsed.mid);
+
+      // Find the scanned product's position
+      const scannedEntry = originRates.find(o => o.code === scannedOrigin);
+      const bestAlt = originRates.find(o => o.code !== scannedOrigin && o.parsed.mid < scannedRate);
+
+      const altCards = originRates
+        .filter(o => o.code !== scannedOrigin)
+        .slice(0, 5)
+        .map((o, i) => {
+          const savings = scannedRate - o.parsed.mid;
+          const isBest = i === 0 && savings > 0;
+          const savingsText = savings > 0 ? `${savings.toFixed(0)}% less tariff` : savings === 0 ? "Same rate" : `${Math.abs(savings).toFixed(0)}% more tariff`;
+          return `<section class="alternative"><div class="kettle" style="font-size:29px">${o.flag}</div><div><div class="alt-title"><h3>${o.name}</h3>${isBest ? `<span class="best">Lowest</span>` : ""}</div><p>${o.rate || "0%"} tariff · ${r.categoryLabel}</p><strong>${savingsText}</strong><small>vs ${scannedRate}% from ${scannedEntry?.name || "current origin"}</small></div><span>${arrow}</span></section>`;
+        }).join("");
+
+      const headline = bestAlt
+        ? `Switch origin, pay less tariff.`
+        : scannedRate === 0
+          ? `This product is already from a low-tariff source.`
+          : `Tariff rates by country of origin.`;
+
+      const subtext = bestAlt
+        ? `Your ${esc(r.productName?.substring(0,30) || "product")} from ${scannedEntry?.flag} ${scannedEntry?.name} has a ${scannedRate}% tariff. These origins have lower rates for the same category.`
+        : `Same product category (${r.categoryLabel}), different origins. Rates vary by trade agreements.`;
+
+      return `<div class="screen">${header("Origin comparison", { back: "result" })}<main class="scroll"><section class="intro"><h1>${headline}</h1><p>${subtext}</p></section>${altCards}<section class="method-strip"><span>◎</span><span>Tariff rates are category-level estimates. Actual rates depend on the specific HTS classification and trade agreements in effect.</span></section></main>${nav()}</div>`;
+    }
+    function history() {
+      const hist = getHistory();
+      if (!hist.length) {
+        return `<div class="screen">${header("History")}<main class="scroll"><section class="intro"><p class="eyebrow">Scan history</p><h1>Nothing here yet.</h1><p>Every product you scan shows up here with its tariff rate and origin.</p></section><section class="empty"><div style="font-size:28px">▣</div><h3>No scans yet</h3><p>Scan a product barcode to start building your history.</p><button class="browse-link" data-action="scanner">Scan a product</button></section></main>${nav()}</div>`;
+      }
+
+      // Group scans by date
+      const today = new Date(); today.setHours(0,0,0,0);
+      const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+
+      const groups = {};
+      hist.forEach(h => {
+        const d = new Date(h.date);
+        d.setHours(0,0,0,0);
+        let label;
+        if (d.getTime() === today.getTime()) label = "Today";
+        else if (d.getTime() === yesterday.getTime()) label = "Yesterday";
+        else label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(h);
+      });
+
+      const groupHtml = Object.entries(groups).map(([label, items]) => {
+        const cards = items.map(h => {
+          const name = esc((h.name || "Unknown product").substring(0, 36));
+          const flag = h.flag || "🌍";
+          const country = esc(h.country || "Unknown");
+          const rate = esc(h.rate || "—");
+          const brand = h.brand ? esc(h.brand.split(",")[0].substring(0, 18)) : "";
+          const confidence = h.confidence || "";
+          const confColor = confidence === "high" ? "#4c7a47" : confidence === "medium" ? "#8b6f19" : "#b15c35";
+          return `<button class="alternative" style="width:100%;text-align:left" data-action="recheck:${esc(h.barcode)}"><div class="kettle" style="font-size:29px">${flag}</div><div><div class="alt-title"><h3>${name}</h3></div><p>${country}${brand ? " · " + brand : ""}</p><strong style="color:#1f7255">${rate}</strong><small style="color:${confColor}">${confidence} confidence</small></div><span>${arrow}</span></button>`;
+        }).join("");
+        return `<section><div class="section-head" style="margin-bottom:8px"><div><p class="eyebrow">${label}</p><h2 style="font-size:13px">${items.length} ${items.length === 1 ? "scan" : "scans"}</h2></div></div>${cards}</section>`;
+      }).join("");
+
+      return `<div class="screen">${header("History")}<main class="scroll"><section class="intro"><p class="eyebrow">${hist.length} ${hist.length === 1 ? "scan" : "scans"} total</p><h1>Your scan history.</h1></section>${groupHtml}<button class="wide-action" data-action="scanner" style="margin-top:18px">Scan another product ${arrow}</button></main>${nav()}</div>`;
+    }
+    const ONBOARDING_COUNTRIES = [
+      { code: "US", flag: "🇺🇸", name: "United States", sub: "USITC Harmonized Tariff Schedule" },
+      { code: "CA", flag: "🇨🇦", name: "Canada", sub: "CBSA Customs Tariff" },
+      { code: "EU", flag: "🇪🇺", name: "European Union", sub: "TARIC (illustrative)" },
+      { code: "GB", flag: "🇬🇧", name: "United Kingdom", sub: "UK Global Tariff (illustrative)" },
+      { code: "AU", flag: "🇦🇺", name: "Australia", sub: "Illustrative rates" },
+      { code: "OTHER", flag: "🌍", name: "Other", sub: "US rates as reference" },
+    ];
+
+    function onboarding() {
+      const step = state.onbStep || "welcome";
+      if (step === "welcome") return onbWelcome();
+      if (step === "signup") return onbAuth("signup");
+      if (step === "signin") return onbAuth("signin");
+      if (step === "country") return onbCountry();
+      return onbWelcome();
+    }
+
+    function onbWelcome() {
+      return `<div class="screen">${header("Welcome", { market: false })}<main class="scroll" style="display:flex;flex-direction:column;justify-content:center;padding:30px 22px">
+        <div style="text-align:center;margin-bottom:30px">
+          <div style="font-size:48px;margin-bottom:12px">📦</div>
+          <h1 style="font-size:26px;letter-spacing:-1px;margin:0 0 8px">Tariff Buddy</h1>
+          <p style="color:var(--muted);font-size:13px;line-height:1.5;margin:0">Scan any product barcode. See the tariff rate, country of origin, and price impact instantly.</p>
+        </div>
+        <button class="auth-btn" data-action="onb-signup">Create account</button>
+        <button class="auth-btn" style="background:#fff;color:#104d3a;border:1px solid var(--line);margin-top:10px" data-action="onb-signin">I already have an account</button>
+        <button class="browse-link" style="text-align:center;margin-top:20px;font-size:12px" data-action="onb-skip">Skip for now</button>
+      </main></div>`;
+    }
+
+    function onbAuth(mode) {
+      const isSignup = mode === "signup";
+      const title = isSignup ? "Create account" : "Sign in";
+      const cta = isSignup ? "Create account" : "Sign in";
+      const switchText = isSignup ? "Already have an account? Sign in" : "Need an account? Create one";
+      const switchAction = isSignup ? "onb-signin" : "onb-signup";
+      return `<div class="screen">${header(title, { back: "onb-welcome", market: false })}<main class="scroll" style="padding:24px 22px">
+        <div style="margin-bottom:20px">
+          <h1 style="font-size:22px;letter-spacing:-.8px;margin:0 0 6px">${title}</h1>
+          <p style="color:var(--muted);font-size:12px;margin:0">${isSignup ? "Save your scan history across devices." : "Welcome back."}</p>
+        </div>
+        ${state.authError ? `<div class="auth-error">${esc(state.authError)}</div>` : ""}
+        <form id="auth-form" onsubmit="return false">
+          ${isSignup ? `<input class="auth-field" id="auth-name" placeholder="Display name" autocomplete="name" />` : ""}
+          <input class="auth-field" id="auth-email" type="email" placeholder="Email" autocomplete="email" required />
+          <input class="auth-field" id="auth-password" type="password" placeholder="Password (min 6 characters)" autocomplete="${isSignup ? "new-password" : "current-password"}" required minlength="6" />
+          <button class="auth-btn" type="submit" data-action="auth-submit" ${state.authLoading ? "disabled" : ""}>${state.authLoading ? "Please wait…" : cta}</button>
+        </form>
+        <button class="browse-link" style="text-align:center;margin-top:16px;font-size:12px" data-action="${switchAction}">${switchText}</button>
+      </main></div>`;
+    }
+
+    function onbCountry() {
+      const selected = state.onbCountry || state.market;
+      const options = ONBOARDING_COUNTRIES.map(c => `<button class="country-option ${c.code === selected ? "selected" : ""}" data-action="onb-pick-country:${c.code}"><div><span class="name">${c.flag} ${c.name}</span><div class="sub">${c.sub}</div></div>${c.code === selected ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`).join("");
+      return `<div class="screen">${header("Your country", { back: "onb-signup", market: false })}<main class="scroll" style="padding:24px 22px">
+        <div style="margin-bottom:20px">
+          <h1 style="font-size:22px;letter-spacing:-.8px;margin:0 0 6px">Where do you live?</h1>
+          <p style="color:var(--muted);font-size:12px;margin:0">We'll show tariff rates for your country's import schedule.</p>
+        </div>
+        ${options}
+        <button class="auth-btn" style="margin-top:16px" data-action="onb-finish">Continue</button>
+      </main></div>`;
+    }
+
+    async function handleAuthSubmit() {
+      const email = document.getElementById("auth-email")?.value?.trim();
+      const password = document.getElementById("auth-password")?.value;
+      const name = document.getElementById("auth-name")?.value?.trim();
+      if (!email || !password || password.length < 6) {
+        state.authError = "Enter a valid email and a password of at least 6 characters.";
+        render(); return;
+      }
+      state.authError = null;
+      state.authLoading = true;
+      render();
+
+      const isSignup = state.onbStep === "signup";
+      let result;
+      if (isSignup) {
+        result = await SupabaseClient.signUp(email, password);
+        if (result.access_token) {
+          state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email, userId: result.user?.id };
+          // Save display name + fetch profile (wrapped in try/catch — trigger may need a moment)
+          try { await SupabaseClient.updateProfile({ display_name: name || email.split("@")[0] }, result.access_token); } catch (e) {}
+          try { state.profile = await SupabaseClient.getProfile(result.access_token); } catch (e) {}
+          saveSession(result, email, name);
+          state.authLoading = false;
+          state.onbStep = "country";
+          render();
+        } else if (result.error) {
+          state.authError = result.error_description || result.error || result.message || "Sign up failed.";
+          state.authLoading = false;
+          render();
+        } else {
+          // No token and no error — shouldn't happen, but handle gracefully
+          state.authError = "Something went wrong. Try signing in instead.";
+          state.authLoading = false;
+          state.onbStep = "signin";
+          render();
+        }
+      } else {
+        result = await SupabaseClient.signIn(email, password);
+        if (result.access_token) {
+          state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email: result.user?.email || email, userId: result.user?.id };
+          state.profile = await SupabaseClient.getProfile(result.access_token);
+          saveSession(result, email);
+          state.authLoading = false;
+          state.screen = "home";
+          state.onbStep = null;
+          render();
+        } else {
+          state.authError = result.error_description || result.error || "Invalid email or password.";
+          state.authLoading = false;
+          render();
+        }
+      }
+    }
+
+    function saveSession(authResult, email, name) {
+      try {
+        localStorage.setItem("tb_session", JSON.stringify({
+          token: authResult.access_token,
+          refreshToken: authResult.refresh_token,
+          email: authResult.user?.email || email,
+          expiresAt: Date.now() + (authResult.expires_in || 3600) * 1000,
+        }));
+      } catch (e) {}
+    }
+
+    function loadSession() {
+      try {
+        const s = JSON.parse(localStorage.getItem("tb_session") || "null");
+        if (!s || !s.token) return null;
+        if (s.expiresAt && Date.now() > s.expiresAt) return null;
+        return s;
+      } catch { return null; }
+    }
+
+    function clearSession() {
+      localStorage.removeItem("tb_session");
+      state.authUser = null;
+      state.profile = null;
+    }
+
+    async function restoreSession() {
+      const session = loadSession();
+      if (!session) return;
+      state.authUser = { token: session.token, email: session.email };
+      state.profile = await SupabaseClient.getProfile(session.token);
+      if (state.profile) {
+        state.market = state.profile.country_code || "US";
+      }
+    }
+
+    function settings() {
+      const marketOptions = Object.entries(markets).map(([id, market]) => {
+        const rateNote = id === "US" ? "USITC HTS" : id === "CA" ? "CBSA Customs Tariff" : "TARIC (illustrative)";
+        return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">◎ ${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`;
+      }).join("");
+
+      // Account section
+      let accountSection;
+      if (state.authUser && state.profile) {
+        const p = state.profile;
+        const countryInfo = ONBOARDING_COUNTRIES.find(c => c.code === p.country_code);
+        const initials = (p.display_name || p.email || "?").charAt(0).toUpperCase();
+        const scanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
+
+        accountSection = `
+        <div class="settings-card" style="overflow:visible">
+          <div class="settings-profile">
+            <div class="settings-avatar">${esc(initials)}</div>
+            <div class="settings-profile-info">
+              <h3>${esc(p.display_name || "User")}</h3>
+              <p>${esc(p.email || state.authUser.email || "—")}</p>
+            </div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="account-row"><span class="label">Country</span><span class="value">${countryInfo ? countryInfo.flag + " " + countryInfo.name : p.country_code || "—"}</span></div>
+          <div class="account-row"><span class="label">Member since</span><span class="value" style="font-size:11px">${p.created_at ? new Date(p.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—"}</span></div>
+          <div class="account-row"><span class="label">Scans</span><span class="value">${scanCount}</span></div>
+        </div>
+        <button class="logout-btn" data-action="sign-out">Log out</button>
+        <button class="danger-btn-subtle" data-action="delete-account">Delete account</button>`;
+      } else {
+        accountSection = `<section class="settings-card"><p class="settings-label">Account</p>
+          <div style="padding:16px;text-align:center">
+            <p style="color:var(--muted);font-size:12px;margin:0 0 12px">Sign in to sync your scan history across devices.</p>
+            <button class="auth-btn" data-action="onb-signup">Create account</button>
+            <button class="browse-link" style="margin-top:10px;font-size:12px" data-action="onb-signin">Already have an account?</button>
+          </div>
+        </section>`;
+      }
+
+      const isAuthed = !!(state.authUser && state.profile);
+
+      return `<div class="screen">${header("Settings", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Preferences</p><h1>Settings.</h1></section>
+        ${accountSection}
+        ${isAuthed ? "" : ""}
+        <p class="settings-section-title">Tariff Market</p>
+        ${marketOptions}
+        <p class="settings-section-title">Data</p>
+          <div class="settings-card">
+            <button class="account-row" style="width:100%;text-align:left;background:none;border:none;cursor:pointer" data-action="clear-history">
+              <span class="value" style="font-size:13px">Clear scan history</span>
+              <span class="label">${(() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })() } scans</span>
+            </button>
+          </div>
+        <p class="settings-section-title">About</p>
+          <div class="settings-card">
+            <div class="account-row"><span class="label">Version</span><span class="value">1.0</span></div>
+            <div class="account-row"><span class="label">Tariff source</span><span class="value" style="font-size:11px">USITC / CBSA</span></div>
+            <div class="account-row"><span class="label">Product data</span><span class="value" style="font-size:11px">Open Food Facts + UPCitemdb</span></div>
+          </div>
+        <p class="disclaimer" style="margin-top:18px">ⓘ Tariff rates are approximate consumer-level ranges. Not a substitute for official trade advice.</p>
+      </main>${nav()}</div>`;
+    }
+    function render() {
+      const screens = { home, scanner, result, alternatives, history, settings, onboarding, story: () => storyDetail(state.activeStory) };
+      app.innerHTML = screens[state.screen]();
+      document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => action(button.dataset.action)));
+      const productSearch = document.getElementById("product-search");
+      if (productSearch) productSearch.addEventListener("keydown", event => { if (event.key === "Enter") action("result"); });
+    }
+    function action(value) {
+      // Onboarding navigation
+      if (value === "onb-signup") { state.onbStep = "signup"; state.authError = null; state.screen = "onboarding"; render(); return; }
+      if (value === "onb-signin") { state.onbStep = "signin"; state.authError = null; state.screen = "onboarding"; render(); return; }
+      if (value === "onb-welcome") { state.onbStep = "welcome"; state.authError = null; state.screen = "onboarding"; render(); return; }
+      if (value === "onb-skip") { state.onbStep = null; state.screen = "home"; render(); return; }
+      if (value.startsWith("onb-pick-country:")) { state.onbCountry = value.split(":")[1]; render(); return; }
+      if (value === "onb-finish") {
+        const cc = state.onbCountry || state.market;
+        state.market = cc;
+        // Save country to profile if logged in
+        if (state.authUser?.token) {
+          SupabaseClient.updateProfile({ country_code: cc }, state.authUser.token);
+        }
+        state.onbStep = null;
+        state.screen = "home";
+        render();
+        return;
+      }
+      if (value === "auth-submit") { handleAuthSubmit(); return; }
+      if (value === "sign-out") {
+        if (state.authUser?.token) SupabaseClient.signOut(state.authUser.token);
+        clearSession();
+        state.screen = "home";
+        render();
+        return;
+      }
+      if (value === "delete-account") {
+        if (!confirm("Delete your account? This permanently removes your profile and synced data. This cannot be undone.")) return;
+        const btn = document.querySelector('[data-action="delete-account"]');
+        if (btn) { btn.textContent = "Deleting…"; btn.style.opacity = "0.5"; }
+        SupabaseClient.deleteAccount(state.authUser?.token).then(function(ok) {
+          clearSession();
+          localStorage.removeItem(HISTORY_KEY);
+          state.screen = "home";
+          render();
+          if (!ok) alert("Account deletion may not have completed fully. Please try again or contact support.");
+        });
+        return;
+      }
+      if (value === "clear-history") {
+        if (confirm("Clear all locally stored scans? This won't delete synced scans if you're signed in.")) {
+          localStorage.removeItem(HISTORY_KEY);
+          render();
+        }
+        return;
+      }
+      // Manual barcode lookup
+      if (value === "manual-lookup") {
+        const input = document.getElementById("manual-barcode");
+        const barcode = input?.value?.trim();
+        if (!barcode || barcode.length < 8) {
+          state.lastLookupError = "Enter a valid barcode (at least 8 digits).";
+          render(); return;
+        }
+        state.lastLookupError = null;
+        state.scanning = true;
+        state.scanFound = false;
+        render();
+        ProductLookup.lookup(barcode).then(result => {
+          state.scanResult = result;
+          state.scanFound = true;
+          render();
+          addToHistory(result);
+        });
+        return;
+      }
+      // Camera scan
+      if (value === "start-camera") {
+        startCameraScan();
+        return;
+      }
+      // Scan another
+      if (value === "scan-more") {
+        state.scanResult = null;
+        state.scanFound = false;
+        state.scanning = false;
+        render();
+        return;
+      }
+      if (value === "save") { state.saved = !state.saved; render(); return; }
+      // Re-check a barcode from history
+      if (value.startsWith("recheck:")) {
+        const barcode = value.split(":")[1];
+        if (!barcode || barcode.length < 8) { state.screen = "scanner"; render(); return; }
+        state.screen = "scanner";
+        state.scanning = true;
+        state.scanFound = false;
+        state.lastLookupError = null;
+        render();
+        ProductLookup.lookup(barcode).then(result => {
+          state.scanResult = result;
+          state.scanFound = true;
+          state.screen = "result";
+          render();
+          addToHistory(result);
+        });
+        return;
+      }
+      if (value.startsWith("filter:")) { state.filter = value.split(":")[1]; render(); return; }
+      if (value.startsWith("market:")) { state.market = value.split(":")[1]; state.screen = "home"; state.query = ""; state.filter = "all"; render(); return; }
+      // Story navigation
+      if (value.startsWith("story:")) { state.activeStory = value.split(":")[1]; state.screen = "story"; render(); return; }
+      // Home page manual barcode lookup
+      if (value === "manual-home-lookup") {
+        const input = document.getElementById("product-search");
+        const barcode = input?.value?.trim();
+        if (!barcode || barcode.length < 8) { render(); return; }
+        state.screen = "scanner";
+        state.scanning = true;
+        state.scanFound = false;
+        state.lastLookupError = null;
+        render();
+        ProductLookup.lookup(barcode).then(result => {
+          state.scanResult = result;
+          state.scanFound = true;
+          state.screen = "result";
+          render();
+          addToHistory(result);
+        });
+        return;
+      }
+      state.screen = value;
+      if (value === "scanner") { state.scanFound = false; state.scanning = false; }
+      render();
+    }
+
+    function startCameraScan() {
+      if (typeof Html5Qrcode === "undefined") {
+        state.lastLookupError = "Camera scanner unavailable. Enter the barcode manually.";
+        render();
+        return;
+      }
+      state.scanning = true;
+      state.scanFound = false;
+      state.lastLookupError = null;
+      render();
+
+      try {
+        const html5QrCode = new Html5Qrcode("scan-viewfinder", { verbose: false });
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          (decodedText) => {
+            // Success — barcode scanned
+            html5QrCode.stop().then(() => {
+              ProductLookup.lookup(decodedText).then(result => {
+                state.scanResult = result;
+                state.scanFound = true;
+                render();
+                addToHistory(result);
+              });
+            }).catch(() => {
+              ProductLookup.lookup(decodedText).then(result => {
+                state.scanResult = result;
+                state.scanFound = true;
+                render();
+                addToHistory(result);
+              });
+            });
+          },
+          () => {} // Ignore per-frame errors
+        ).catch(err => {
+          state.lastLookupError = "Camera access denied or unavailable. Enter barcode manually below.";
+          state.scanning = false;
+          render();
+        });
+      } catch(e) {
+        state.lastLookupError = "Camera scanner error. Enter barcode manually.";
+        state.scanning = false;
+        render();
+      }
+    }
+
+    function addToHistory(result) {
+      if (!result || result.error) return;
+      try {
+        const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        hist.unshift({
+          barcode: result.barcode,
+          name: result.productName,
+          brand: result.brand,
+          country: result.countryName,
+          flag: result.countryFlag,
+          rate: result.tariffRate,
+          confidence: result.confidence,
+          date: new Date().toISOString(),
+        });
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 50)));
+      } catch(e) {}
+      // Also save to Supabase if logged in
+      if (state.authUser?.token) {
+        const userId = state.profile?.id || state.authUser.userId;
+        SupabaseClient.saveScan({
+          user_id: userId,
+          barcode: result.barcode,
+          product_name: result.productName,
+          brand: result.brand,
+          country_code: result.countryCode,
+          country_name: result.countryName,
+          category: result.category,
+          tariff_rate: result.tariffRate,
+          tariff_mid: result.tariffParsed?.mid || null,
+          confidence: result.confidence,
+          origin_note: result.originNote,
+          has_product_data: result.hasProductData,
+        }, state.authUser.token);
+      }
+    }
+
+    // Load stories from Supabase on init (falls back to static data)
+    async function initDbStories() {
+      const stories = await SupabaseClient.getStories();
+      if (stories && stories.length > 0) {
+        state.dbStories = stories;
+        if (state.screen === "home") render();
+      }
+    }
+
+    // Init: restore session, show onboarding for new users
+    async function init() {
+      // Try to restore an existing session
+      await restoreSession();
+      if (state.authUser) {
+        // Logged in — go straight to home
+        render();
+      } else {
+        // First-time user (no onboarding seen, no session) → show welcome
+        const seenOnboarding = localStorage.getItem("tb_seen_onboarding");
+        if (!seenOnboarding) {
+          state.screen = "onboarding";
+          state.onbStep = "welcome";
+          render();
+        } else {
+          render();
+        }
+      }
+      initDbStories();
+    }
+
+    // Mark onboarding as seen when user skips or finishes
+    const originalAction = action;
+    action = function(value) {
+      const result = originalAction(value);
+      if (value === "onb-skip" || value === "onb-finish") {
+        localStorage.setItem("tb_seen_onboarding", "1");
+      }
+      return result;
+    };
+
+    init();
+  </script>
+</body>
+</html>
