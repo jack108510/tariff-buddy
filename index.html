@@ -1137,8 +1137,7 @@
       } else {
         // First-time user (no onboarding seen, no session) → show welcome
         const seenOnboarding = localStorage.getItem("tb_seen_onboarding");
-        const isNativeApp = navigator.userAgent.includes("TariffBuddyNative");
-        if (!seenOnboarding && !isNativeApp) {
+        if (!seenOnboarding) {
           state.screen = "onboarding";
           state.onbStep = "welcome";
           render();
