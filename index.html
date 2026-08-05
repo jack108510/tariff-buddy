@@ -294,7 +294,14 @@
     .account-row:last-child { border-bottom: 0; }
     .account-row .label { font: 800 9px var(--mono); text-transform: uppercase; color: var(--muted); }
     .account-row .value { font-size: 13px; font-weight: 700; }
-    .danger-btn { width: 100%; height: 46px; border-radius: 13px; background: #fde8e0; color: #b04020; font-size: 13px; font-weight: 800; margin-top: 16px; }
+    .danger-btn { width: 100%; height: 46px; border-radius: 13px; background: #fde8e0; color: #b04020; font-size: 13px; font-weight: 800; margin-top: 12px; }
+    .danger-btn-subtle { width: 100%; height: 44px; border-radius: 12px; background: transparent; color: #b04020; font-size: 12px; font-weight: 700; border: 1px solid #f0d0c5; margin-top: 10px; }
+    .logout-btn { width: 100%; height: 46px; border-radius: 13px; background: #104d3a; color: white; font-size: 13px; font-weight: 800; margin-top: 16px; }
+    .settings-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: var(--green); flex-shrink: 0; }
+    .settings-profile { display: flex; align-items: center; gap: 13px; padding: 16px 14px; }
+    .settings-profile-info h3 { margin: 0; font-size: 15px; font-weight: 800; color: var(--ink); }
+    .settings-profile-info p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+    .settings-section-title { margin: 22px 0 10px; padding: 0 4px; font: 800 9px var(--mono); text-transform: uppercase; color: var(--muted); letter-spacing: .06em; }
   </style>
 </head>
 <body>
@@ -793,13 +800,26 @@
       if (state.authUser && state.profile) {
         const p = state.profile;
         const countryInfo = ONBOARDING_COUNTRIES.find(c => c.code === p.country_code);
-        accountSection = `<section class="settings-card"><p class="settings-label">Account</p>
-          <div class="account-row"><span class="label">Name</span><span class="value">${esc(p.display_name || "—")}</span></div>
-          <div class="account-row"><span class="label">Email</span><span class="value" style="font-size:11px">${esc(p.email || state.authUser.email || "—")}</span></div>
+        const initials = (p.display_name || p.email || "?").charAt(0).toUpperCase();
+        const scanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
+
+        accountSection = `
+        <div class="settings-card" style="overflow:visible">
+          <div class="settings-profile">
+            <div class="settings-avatar">${esc(initials)}</div>
+            <div class="settings-profile-info">
+              <h3>${esc(p.display_name || "User")}</h3>
+              <p>${esc(p.email || state.authUser.email || "—")}</p>
+            </div>
+          </div>
+        </div>
+        <div class="settings-card">
           <div class="account-row"><span class="label">Country</span><span class="value">${countryInfo ? countryInfo.flag + " " + countryInfo.name : p.country_code || "—"}</span></div>
           <div class="account-row"><span class="label">Member since</span><span class="value" style="font-size:11px">${p.created_at ? new Date(p.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—"}</span></div>
-        </section>
-        <button class="danger-btn" data-action="sign-out">Sign out</button>`;
+          <div class="account-row"><span class="label">Scans</span><span class="value">${scanCount}</span></div>
+        </div>
+        <button class="logout-btn" data-action="sign-out">Log out</button>
+        <button class="danger-btn-subtle" data-action="delete-account">Delete account</button>`;
       } else {
         accountSection = `<section class="settings-card"><p class="settings-label">Account</p>
           <div style="padding:16px;text-align:center">
@@ -810,27 +830,26 @@
         </section>`;
       }
 
-      // Clear local data
-      const scanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
+      const isAuthed = !!(state.authUser && state.profile);
 
       return `<div class="screen">${header("Settings", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Preferences</p><h1>Settings.</h1></section>
         ${accountSection}
-        <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">Tariff market</p><h2 style="font-size:15px">Country for tariff rates</h2></div></div>${marketOptions}</section>
-        <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">Data</p><h2 style="font-size:15px">Local storage</h2></div></div>
+        ${isAuthed ? "" : ""}
+        <p class="settings-section-title">Tariff Market</p>
+        ${marketOptions}
+        <p class="settings-section-title">Data</p>
           <div class="settings-card">
             <button class="account-row" style="width:100%;text-align:left;background:none;border:none;cursor:pointer" data-action="clear-history">
               <span class="value" style="font-size:13px">Clear scan history</span>
-              <span class="label">${scanCount} ${scanCount === 1 ? "scan" : "scans"}</span>
+              <span class="label">${(() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })() } scans</span>
             </button>
           </div>
-        </section>
-        <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">About</p><h2 style="font-size:15px">Tariff Buddy</h2></div></div>
+        <p class="settings-section-title">About</p>
           <div class="settings-card">
             <div class="account-row"><span class="label">Version</span><span class="value">1.0</span></div>
             <div class="account-row"><span class="label">Tariff source</span><span class="value" style="font-size:11px">USITC / CBSA</span></div>
             <div class="account-row"><span class="label">Product data</span><span class="value" style="font-size:11px">Open Food Facts + UPCitemdb</span></div>
           </div>
-        </section>
         <p class="disclaimer" style="margin-top:18px">ⓘ Tariff rates are approximate consumer-level ranges. Not a substitute for official trade advice.</p>
       </main>${nav()}</div>`;
     }
@@ -866,6 +885,19 @@
         clearSession();
         state.screen = "home";
         render();
+        return;
+      }
+      if (value === "delete-account") {
+        if (!confirm("Delete your account? This permanently removes your profile and synced data. This cannot be undone.")) return;
+        const btn = document.querySelector('[data-action="delete-account"]');
+        if (btn) { btn.textContent = "Deleting…"; btn.style.opacity = "0.5"; }
+        SupabaseClient.deleteAccount(state.authUser?.token).then(function(ok) {
+          clearSession();
+          localStorage.removeItem(HISTORY_KEY);
+          state.screen = "home";
+          render();
+          if (!ok) alert("Account deletion may not have completed fully. Please try again or contact support.");
+        });
         return;
       }
       if (value === "clear-history") {

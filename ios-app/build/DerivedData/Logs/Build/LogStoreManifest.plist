@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>12</integer>
+	<key>logs</key>
+	<dict>
+		<key>BED62A08-6474-4A81-AEA0-E3AAA58AA81D</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>BED62A08-6474-4A81-AEA0-E3AAA58AA81D.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>TariffBuddy project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>TariffBuddy</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project TariffBuddy with scheme TariffBuddy</string>
+			<key>timeStartedRecording</key>
+			<real>807644525.81000602</real>
+			<key>timeStoppedRecording</key>
+			<real>807644526.146662</real>
+			<key>title</key>
+			<string>Building project TariffBuddy with scheme TariffBuddy</string>
+			<key>uniqueIdentifier</key>
+			<string>BED62A08-6474-4A81-AEA0-E3AAA58AA81D</string>
+		</dict>
+		<key>E511F13C-956C-4AAC-B335-DF699FB1F887</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>E511F13C-956C-4AAC-B335-DF699FB1F887.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>TariffBuddy project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>TariffBuddy</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project TariffBuddy with scheme TariffBuddy</string>
+			<key>timeStartedRecording</key>
+			<real>807644734.7378</real>
+			<key>timeStoppedRecording</key>
+			<real>807644735.05004799</real>
+			<key>title</key>
+			<string>Building project TariffBuddy with scheme TariffBuddy</string>
+			<key>uniqueIdentifier</key>
+			<string>E511F13C-956C-4AAC-B335-DF699FB1F887</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

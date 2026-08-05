@@ -42,7 +42,8 @@ struct WebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
-        config.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        // Use default data store but clear it on launch so we always get fresh content
+        config.websiteDataStore = WKWebsiteDataStore.default()
 
         // Register message handler so JS can trigger native scanning
         config.userContentController.add(context.coordinator, name: "scanNative")
@@ -51,8 +52,12 @@ struct WebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         context.coordinator.onScanRequested = onScanRequested
 
-        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
-        webView.load(request)
+        // Clear all cached web data before loading
+        WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+                                                   modifiedSince: Date(timeIntervalSince1970: 0)) {
+            let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10)
+            webView.load(request)
+        }
         onWebViewReady(webView)
         return webView
     }

@@ -216,4 +216,28 @@ const SupabaseClient = {
       });
     } catch (e) {}
   },
+
+  /**
+   * Delete account — removes the user's profile row.
+   * The auth user is deleted via Supabase admin or cascade.
+   */
+  async deleteAccount(accessToken) {
+    if (!accessToken) return false;
+    try {
+      // Delete profile row (RLS restricts to own row)
+      await fetch(`${SUPABASE_URL}/rest/v1/tb_users?email=neq.impossible`, {
+        method: "DELETE",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${accessToken}`,
+        },
+      });
+      // Sign out after deletion
+      await this.signOut(accessToken);
+      return true;
+    } catch (e) {
+      console.warn("Failed to delete account:", e);
+      return false;
+    }
+  },
 };

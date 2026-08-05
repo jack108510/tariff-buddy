@@ -1,0 +1,12 @@
+{
+  "/Users/jackserver/tariff-buddy/ios-app/TariffBuddy/ContentView.swift" : {
+    "abi-baseline-json" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy.abi.json",
+    "const-values" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy-primary.swiftconstvalues",
+    "dependencies" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy-primary.d",
+    "diagnostics" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy-primary.dia",
+    "objc-header" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy-Swift.h",
+    "swiftdoc" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy.swiftdoc",
+    "swiftmodule" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy.swiftmodule",
+    "swiftsourceinfo" : "/Users/jackserver/tariff-buddy/ios-app/build/DerivedData/Build/Intermediates.noindex/TariffBuddy.build/Release-iphoneos/TariffBuddy.build/Objects-normal/arm64/TariffBuddy.swiftsourceinfo"
+  }
+}
