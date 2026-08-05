@@ -341,7 +341,7 @@
     const arrow = "›";
     const header = (title, options = {}) => `<header class="header">${options.back ? `<button class="circle-button" data-action="${options.back}" aria-label="Go back">‹</button>` : `<div class="brand-logo"><img src="assets/logo-48.png" alt="Tariff Buddy" /></div>`}<h2>${title}</h2><div class="header-side">${options.example ? `<button class="text-button" data-action="result">Try example</button>` : options.market === false ? "" : `<button class="market" data-action="settings">◎ ${current().short} ${arrow}</button>`}</div></header>`;
     const priceRail = () => `<div class="price-rail"><div class="price-cell"><span>Listed</span><b>${money(listed)}</b></div><div class="price-cell extra"><span>Possible extra</span><b>+${money(current().extra)}</b></div><div class="price-cell total"><span>Possible total</span><b>${money(listed + current().extra)}</b></div></div>`;
-    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Home</span></button><button class="${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["history", "story"].includes(state.screen) ? "active" : ""}" data-action="history"><span class="nav-icon">≣</span><span>History</span></button><button class="${["settings"].includes(state.screen) ? "active" : ""}" data-action="settings"><span class="nav-icon">⚙</span><span>Settings</span></button></nav>`;
+    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Home</span></button><button class="${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["history", "story"].includes(state.screen) ? "active" : ""}" data-action="history"><span class="nav-icon">≣</span><span>History</span></button><button class="${["settings"].includes(state.screen) ? "active" : ""}" data-action="settings"><span class="nav-icon">☰</span><span>Settings</span></button></nav>`;
     function home() {
       const storiesData = state.dbStories || TARIFF_STORIES;
       const stories = storiesData.map(storyCard).join("");
@@ -788,7 +788,7 @@
         return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">◎ ${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`;
       }).join("");
 
-      // Account section — shows if logged in, otherwise shows login prompt
+      // Account section
       let accountSection;
       if (state.authUser && state.profile) {
         const p = state.profile;
@@ -810,10 +810,28 @@
         </section>`;
       }
 
+      // Clear local data
+      const scanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
+
       return `<div class="screen">${header("Settings", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Preferences</p><h1>Settings.</h1></section>
         ${accountSection}
         <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">Tariff market</p><h2 style="font-size:15px">Country for tariff rates</h2></div></div>${marketOptions}</section>
-        <p class="disclaimer" style="margin-top:18px">ⓘ Tariff Buddy v1.0 · Rates are approximate consumer-level ranges.</p>
+        <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">Data</p><h2 style="font-size:15px">Local storage</h2></div></div>
+          <div class="settings-card">
+            <button class="account-row" style="width:100%;text-align:left;background:none;border:none;cursor:pointer" data-action="clear-history">
+              <span class="value" style="font-size:13px">Clear scan history</span>
+              <span class="label">${scanCount} ${scanCount === 1 ? "scan" : "scans"}</span>
+            </button>
+          </div>
+        </section>
+        <section style="margin-top:18px"><div class="section-head" style="margin-bottom:10px"><div><p class="eyebrow">About</p><h2 style="font-size:15px">Tariff Buddy</h2></div></div>
+          <div class="settings-card">
+            <div class="account-row"><span class="label">Version</span><span class="value">1.0</span></div>
+            <div class="account-row"><span class="label">Tariff source</span><span class="value" style="font-size:11px">USITC / CBSA</span></div>
+            <div class="account-row"><span class="label">Product data</span><span class="value" style="font-size:11px">Open Food Facts + UPCitemdb</span></div>
+          </div>
+        </section>
+        <p class="disclaimer" style="margin-top:18px">ⓘ Tariff rates are approximate consumer-level ranges. Not a substitute for official trade advice.</p>
       </main>${nav()}</div>`;
     }
     function render() {
@@ -848,6 +866,13 @@
         clearSession();
         state.screen = "home";
         render();
+        return;
+      }
+      if (value === "clear-history") {
+        if (confirm("Clear all locally stored scans? This won't delete synced scans if you're signed in.")) {
+          localStorage.removeItem(HISTORY_KEY);
+          render();
+        }
         return;
       }
       // Manual barcode lookup
