@@ -913,10 +913,11 @@
         }
         state.authLoading = true;
         render();
-        const ok = await SupabaseClient.resetPassword(email);
-        state.authLoading = false;
-        state.authError = ok ? "Password reset link sent to " + email + "." : "Could not send reset email. Check the address and try again.";
-        render();
+        SupabaseClient.resetPassword(email).then(function(ok) {
+          state.authLoading = false;
+          state.authError = ok ? "Password reset link sent to " + email + "." : "Could not send reset email. Check the address and try again.";
+          render();
+        });
         return;
       }
       if (value === "sign-out") {
