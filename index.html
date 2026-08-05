@@ -321,7 +321,10 @@
     const markets = {
       US: { short: "U.S.", name: "United States", locale: "en-US", currency: "USD", extra: 4.06, saving: 9.99 },
       CA: { short: "Canada", name: "Canada", locale: "en-CA", currency: "CAD", extra: 5.21, saving: 12.70 },
-      EU: { short: "EU", name: "European Union", locale: "de-DE", currency: "EUR", extra: 3.72, saving: 8.65 }
+      EU: { short: "EU", name: "European Union", locale: "de-DE", currency: "EUR", extra: 3.72, saving: 8.65 },
+      GB: { short: "UK", name: "United Kingdom", locale: "en-GB", currency: "GBP", extra: 3.50, saving: 8.00 },
+      AU: { short: "AU", name: "Australia", locale: "en-AU", currency: "AUD", extra: 3.20, saving: 7.50 },
+      OTHER: { short: "Other", name: "Other", locale: "en-US", currency: "USD", extra: 4.06, saving: 9.99 }
     };
     const categories = [
       { id: "food", icon: "♧", title: "Food & beverages", exposure: "medium", range: "6–25%", origin: ["CA", "EU", "NZ"], impact: "Imported specialty groceries may be worth comparing with regional alternatives.", detail: "Some shelf-stable and specialty items can have a more visible landed cost than locally stocked basics.", types: ["Coffee & tea", "Snacks & pantry", "Specialty drinks"] },
@@ -791,8 +794,8 @@
 
     function settings() {
       const marketOptions = Object.entries(markets).map(([id, market]) => {
-        const rateNote = id === "US" ? "USITC HTS" : id === "CA" ? "CBSA Customs Tariff" : "TARIC (illustrative)";
-        return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green);font-size:16px\">✓</b>" : ""}</button>`;
+        const rateNote = id === "US" ? "USITC HTS" : id === "CA" ? "CBSA Customs Tariff" : id === "OTHER" ? "US rates as reference" : "Illustrative rates";
+        return `<button class="country-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span class="name">◎ ${market.name}</span><div class="sub">${rateNote}</div></div>${id === state.market ? "<b style=\"color:var(--green)\">✓</b>" : ""}</button>`;
       }).join("");
 
       const localScanCount = (() => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]").length; } catch { return 0; } })();
@@ -955,7 +958,15 @@
         return;
       }
       if (value.startsWith("filter:")) { state.filter = value.split(":")[1]; render(); return; }
-      if (value.startsWith("market:")) { state.market = value.split(":")[1]; state.screen = "home"; state.query = ""; state.filter = "all"; render(); return; }
+      if (value.startsWith("market:")) {
+        const cc = value.split(":")[1];
+        state.market = cc;
+        // Sync to Supabase if logged in
+        if (state.authUser?.token) {
+          SupabaseClient.updateProfile({ country_code: cc }, state.authUser.token);
+        }
+        state.screen = "home"; state.query = ""; state.filter = "all"; render(); return;
+      }
       // Story navigation
       if (value.startsWith("story:")) { state.activeStory = value.split(":")[1]; state.screen = "story"; render(); return; }
       // Home page manual barcode lookup
@@ -1084,7 +1095,8 @@
       } else {
         // First-time user (no onboarding seen, no session) → show welcome
         const seenOnboarding = localStorage.getItem("tb_seen_onboarding");
-        if (!seenOnboarding) {
+        const isNativeApp = navigator.userAgent.includes("TariffBuddyNative");
+        if (!seenOnboarding && !isNativeApp) {
           state.screen = "onboarding";
           state.onbStep = "welcome";
           render();
