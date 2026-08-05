@@ -11,6 +11,15 @@
 const ProductLookup = {
 
   /**
+   * Returns the active tariff table based on the user's selected market
+   */
+  getTariffTable() {
+    const market = (typeof state !== "undefined" && state.market) || "US";
+    if (market === "CA" && typeof CA_TARIFF_DATA !== "undefined") return CA_TARIFF_DATA;
+    return TARIFF_DATA;
+  },
+
+  /**
    * Full product lookup pipeline.
    * @param {string} barcode - The scanned/entered barcode
    * @returns {Promise<object>} Complete result object
@@ -32,8 +41,9 @@ const ProductLookup = {
     // Step 4: Determine category
     const category = this.guessCategory(offResult, countryCode);
 
-    // Step 5: Get tariff rate for country + category
-    const tariff = TARIFF_DATA.lookup(countryCode, category);
+    // Step 5: Get tariff rate for country + category (market-aware)
+    const tariffTable = this.getTariffTable();
+    const tariff = tariffTable.lookup(countryCode, category);
 
     // Step 6: Build the result
     return {

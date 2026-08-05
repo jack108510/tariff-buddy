@@ -115,13 +115,10 @@
     .category-mini span { color: #936b24; font: 800 8px var(--mono); text-transform: uppercase; }
     .category-mini b { font-size: 11px; margin-top: 3px; }
 
-    .bottom-nav { position: absolute; z-index: 9; bottom: 0; left: 0; right: 0; height: 64px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; padding: 0 12px 8px; background: rgba(255,255,255,.97); border-top: 1px solid #e8edea; }
-    .bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: transparent; color: #98a8a1; font-size: 9px; font-weight: 600; height: 100%; transition: color 120ms ease; }
-    .bottom-nav button .nav-icon { font-size: 18px; line-height: 1; }
-    .bottom-nav button.active { color: #1f7a58; font-weight: 800; }
-    .bottom-nav .scan-nav { position: relative; }
-    .bottom-nav .scan-nav .nav-icon { width: 44px; height: 44px; display: grid; place-items: center; background: #1f7a58; color: white; border-radius: 12px; box-shadow: 0 3px 10px rgba(15,92,62,.25); }
-    .bottom-nav .scan-nav span:last-child { margin-top: 1px; }
+    .bottom-nav { position: absolute; z-index: 9; bottom: 0; left: 0; right: 0; height: 62px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: stretch; padding: 0; background: rgba(255,255,255,.98); border-top: 1px solid #e8edea; backdrop-filter: blur(10px); }
+    .bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: transparent; color: #98a8a1; font-size: 9px; font-weight: 600; height: 100%; transition: color 120ms ease; border-top: 2px solid transparent; }
+    .bottom-nav button .nav-icon { font-size: 19px; line-height: 1; }
+    .bottom-nav button.active { color: #1f7a58; font-weight: 800; border-top-color: #1f7a58; }
 
     .scanner { background: var(--deep); color: white; }
     .scanner .header, .scanner .circle-button { color: white; }
@@ -292,6 +289,7 @@
     <p class="stage-note">Interactive product prototype. Live schedules, a real barcode camera, and retailer feeds are planned production features.</p>
   </main>
   <script src="tariff-data.js"></script>
+  <script src="ca-tariff-data.js"></script>
   <script src="barcode-data.js"></script>
   <script src="stories-data.js"></script>
   <script src="supabase-client.js"></script>
@@ -328,7 +326,7 @@
     const arrow = "›";
     const header = (title, options = {}) => `<header class="header">${options.back ? `<button class="circle-button" data-action="${options.back}" aria-label="Go back">‹</button>` : `<div class="brand-logo"><img src="assets/logo-48.png" alt="Tariff Buddy" /></div>`}<h2>${title}</h2><div class="header-side">${options.example ? `<button class="text-button" data-action="result">Try example</button>` : options.market === false ? "" : `<button class="market" data-action="settings">◎ ${current().short} ${arrow}</button>`}</div></header>`;
     const priceRail = () => `<div class="price-rail"><div class="price-cell"><span>Listed</span><b>${money(listed)}</b></div><div class="price-cell extra"><span>Possible extra</span><b>+${money(current().extra)}</b></div><div class="price-cell total"><span>Possible total</span><b>${money(listed + current().extra)}</b></div></div>`;
-    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Check</span></button><button class="scan-nav ${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["browse", "industry"].includes(state.screen) ? "active" : ""}" data-action="browse"><span class="nav-icon">◇</span><span>Browse</span></button><button class="${state.screen === "saved" ? "active" : ""}" data-action="saved"><span class="nav-icon">♧</span><span>Saved</span></button></nav>`;
+    const nav = () => `<nav class="bottom-nav" aria-label="App navigation"><button class="${state.screen === "home" ? "active" : ""}" data-action="home"><span class="nav-icon">⌂</span><span>Home</span></button><button class="${state.screen === "scanner" ? "active" : ""}" data-action="scanner"><span class="nav-icon">▣</span><span>Scan</span></button><button class="${["browse", "industry", "story"].includes(state.screen) ? "active" : ""}" data-action="browse"><span class="nav-icon">◇</span><span>Browse</span></button><button class="${state.screen === "saved" ? "active" : ""}" data-action="saved"><span class="nav-icon">♢</span><span>Saved</span></button></nav>`;
     function home() {
       const storiesData = state.dbStories || TARIFF_STORIES;
       const stories = storiesData.map(storyCard).join("");
@@ -368,7 +366,8 @@
       const storiesData = state.dbStories || TARIFF_STORIES;
       const story = storiesData.find(s => s.id === id);
       if (!story) return home();
-      const tariff = TARIFF_DATA.lookup(story.origin === "MULTI" ? "CN" : story.origin, story.category);
+      const tariffTable = (state.market === "CA" && typeof CA_TARIFF_DATA !== "undefined") ? CA_TARIFF_DATA : TARIFF_DATA;
+      const tariff = tariffTable.lookup(story.origin === "MULTI" ? "CN" : story.origin, story.category);
       const flag = tariff.flag || "🌍";
       const parsed = TARIFF_DATA.parseRate(tariff.rate);
       return `<div class="screen">${header(story.tag, { back: "home" })}
@@ -531,8 +530,11 @@
       return `<div class="screen">${header("Category check", { back: "browse" })}<main class="scroll"><section class="industry-hero"><div class="industry-identity"><span class="industry-icon">${category.icon}</span><div><span class="prototype">Prototype content</span><h1>${category.title}</h1></div></div><p>${category.impact}</p><div class="industry-tags"><span class="impact-pill ${category.exposure}">${category.exposure} signal</span><span>${current().short} prototype view</span><span>Origin context</span></div></section><section class="rate-panel"><div><p class="eyebrow">Illustrative range</p><strong>${category.range}</strong><span>${current().short} prototype view</span></div><div><p class="eyebrow">Data status</p><strong style="font-size:15px;color:#2c7558;letter-spacing:-.5px">Prototype</strong><span>Not a live rate</span></div></section><section class="context-card"><p class="eyebrow">Why it is worth checking</p><h2>${category.impact}</h2><p>${category.detail}</p></section><section style="margin-top:17px"><div class="section-head"><div><p class="eyebrow">Origin matters</p><h2>Where products may come from</h2></div></div><div class="origin-list">${category.origin.map(origin => `<span class="origin">${origin}</span>`).join("")}</div></section><section><div class="section-head"><div><p class="eyebrow">Choose a type</p><h2>What are you buying?</h2></div><span class="muted" style="font-size:10px">${category.types.length} groups</span></div>${types}</section><section class="next-card"><span class="next-icon">▣</span><div><p class="eyebrow">Check one item</p><h3>Scan a related product</h3><p>Move from category context to your item’s price check.</p></div><button data-action="scanner">${arrow}</button></section><button class="wide-action" data-action="scanner">Scan a product ${arrow}</button><p class="disclaimer">ⓘ This category is illustrative prototype content, not a live tariff quote. Exact treatment depends on the product, origin, classification, and current official measures.</p></main>${nav()}</div>`;
     }
     function settings() {
-      const options = Object.entries(markets).map(([id, market]) => `<button class="market-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><span>◎ ${market.name}</span><b>${id === state.market ? "✓" : ""}</b></button>`).join("");
-      return `<div class="screen">${header("Shopping market", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Your location</p><h1>Where are you shopping?</h1><p>We use this to shape the example price check and available product context.</p></section><section class="settings-card"><p class="settings-label">Market</p>${options}</section><section class="settings-info">ⓘ Market selection updates this prototype. Production calculations require verified schedules, origin data, and retailer prices.</section></main>${nav()}</div>`;
+      const options = Object.entries(markets).map(([id, market]) => {
+        const rateNote = id === "US" ? "US import tariffs (USITC HTS)" : id === "CA" ? "Canadian import tariffs (CBSA)" : "EU tariffs (TARIC — illustrative)";
+        return `<button class="market-option ${id === state.market ? "selected" : ""}" data-action="market:${id}"><div><span>◎ ${market.name}</span><div style="font-size:9px;color:#7a8c83;margin-top:3px">${rateNote}</div></div><b>${id === state.market ? "✓" : ""}</b></button>`;
+      }).join("");
+      return `<div class="screen">${header("Shopping market", { back: "home", market: false })}<main class="scroll"><section class="intro"><p class="eyebrow">Your location</p><h1>Where are you shopping?</h1><p>We use this to show the correct tariff rates. Each country has its own import tariff schedule.</p></section><section class="settings-card"><p class="settings-label">Market</p>${options}</section><section class="settings-info">ⓘ ${state.market === "US" ? "Showing US import tariffs from the USITC Harmonized Tariff Schedule." : state.market === "CA" ? "Showing Canadian import tariffs from the CBSA Customs Tariff Schedule." : "EU tariffs are illustrative — connect to TARIC for verified rates."}</section></main>${nav()}</div>`;
     }
     function render() {
       const screens = { home, scanner, result, alternatives, saved, browse, industry, settings, story: () => storyDetail(state.activeStory) };
