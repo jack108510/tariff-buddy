@@ -1190,6 +1190,27 @@
         }
       }
       initDbStories();
+      
+      // Auto-lookup barcode from URL param (for screenshots/demos)
+      const autoBarcode = urlParams.get("barcode");
+      if (autoBarcode && autoBarcode.length >= 8) {
+        state.screen = "scanner";
+        state.scanning = true;
+        state.scanFound = false;
+        render();
+        ProductLookup.lookup(autoBarcode).then(result => {
+          state.scanResult = result;
+          state.scanFound = true;
+          state.screen = "result";
+          render();
+          addToHistory(result);
+        }).catch(function(err) {
+          state.scanning = false;
+          state.lastLookupError = "Could not look up that barcode.";
+          state.screen = "home";
+          render();
+        });
+      }
     }
 
     // Mark onboarding as seen when user skips or finishes
