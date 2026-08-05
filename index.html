@@ -59,7 +59,7 @@
     .market { display: inline-flex; gap: 5px; align-items: center; font-size: 11px; font-weight: 750; background: #f6f8f5; padding: 8px 9px; border-radius: 20px; border: 1px solid var(--line); white-space: nowrap; }
     .text-button { font-weight: 750; font-size: 12px; color: #2d9270; white-space: nowrap; }
 
-    .scroll { overflow-y: auto; padding: 10px 18px 104px; scrollbar-width: none; }
+    .scroll { overflow-y: auto; padding: 10px 18px 90px; scrollbar-width: none; }
     .scroll::-webkit-scrollbar { display: none; }
     .eyebrow { color: #237759; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .5px; line-height: 1; text-transform: uppercase; margin: 0; }
     .prototype { display: inline-flex; align-items: center; gap: 6px; color: #39745e; font: 700 10px var(--mono); letter-spacing: .4px; text-transform: uppercase; }
@@ -115,18 +115,18 @@
     .category-mini span { color: #936b24; font: 800 8px var(--mono); text-transform: uppercase; }
     .category-mini b { font-size: 11px; margin-top: 3px; }
 
-    .bottom-nav { position: absolute; z-index: 9; bottom: 0; left: 0; right: 0; height: 76px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: end; padding: 8px 15px 8px; background: rgba(255,255,255,.96); border-top: 1px solid #e8edea; }
-    .bottom-nav button { height: 58px; display: grid; place-items: center; gap: 2px; background: transparent; color: #7d8e86; font-size: 9px; }
-    .bottom-nav button .nav-icon { font-size: 19px; line-height: 1; }
-    .bottom-nav button.active { color: #247f5d; font-weight: 800; }
+    .bottom-nav { position: absolute; z-index: 9; bottom: 0; left: 0; right: 0; height: 64px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; padding: 0 12px 8px; background: rgba(255,255,255,.97); border-top: 1px solid #e8edea; }
+    .bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: transparent; color: #98a8a1; font-size: 9px; font-weight: 600; height: 100%; transition: color 120ms ease; }
+    .bottom-nav button .nav-icon { font-size: 18px; line-height: 1; }
+    .bottom-nav button.active { color: #1f7a58; font-weight: 800; }
     .bottom-nav .scan-nav { position: relative; }
-    .bottom-nav .scan-nav .nav-icon { transform: translateY(-18px); width: 48px; height: 48px; display: grid; place-items: center; background: #258c67; color: white; border-radius: 13px 13px 5px 5px; border: 5px solid #fafffb; box-shadow: 0 5px 12px rgba(15,92,62,.27); }
-    .bottom-nav .scan-nav span:last-child { margin-top: -17px; }
+    .bottom-nav .scan-nav .nav-icon { width: 44px; height: 44px; display: grid; place-items: center; background: #1f7a58; color: white; border-radius: 12px; box-shadow: 0 3px 10px rgba(15,92,62,.25); }
+    .bottom-nav .scan-nav span:last-child { margin-top: 1px; }
 
     .scanner { background: var(--deep); color: white; }
     .scanner .header, .scanner .circle-button { color: white; }
     .scanner .circle-button { background: rgba(255,255,255,.1); }
-    .scanner-body { padding: 15px 18px 102px; text-align: center; }
+    .scanner-body { padding: 15px 18px 90px; text-align: center; }
     .camera-label { display: inline-flex; gap: 6px; align-items: center; border: 1px solid rgba(208,245,222,.3); color: #b8dccb; border-radius: 13px; padding: 6px 10px; font: 800 9px var(--mono); text-transform: uppercase; }
     .viewfinder { height: 370px; margin: 14px 0 22px; border-radius: 23px; border: 1px solid rgba(218,253,231,.17); position: relative; overflow: hidden; background-color: #0f3a2c; background-image: linear-gradient(rgba(191,245,213,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(191,245,213,.12) 1px, transparent 1px), radial-gradient(circle at 50% 50%, rgba(52,225,157,.25), transparent 46%); background-size: 31px 31px, 31px 31px, auto; }
     .finder-corner { position: absolute; width: 53px; height: 53px; border-color: #83efc1; border-style: solid; }
