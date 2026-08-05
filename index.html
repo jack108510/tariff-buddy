@@ -710,8 +710,9 @@
         result = await SupabaseClient.signUp(email, password);
         if (result.access_token) {
           state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email, userId: result.user?.id };
-          await SupabaseClient.updateProfile({ display_name: name || email.split("@")[0] }, result.access_token);
-          state.profile = await SupabaseClient.getProfile(result.access_token);
+          // Save display name + fetch profile (wrapped in try/catch — trigger may need a moment)
+          try { await SupabaseClient.updateProfile({ display_name: name || email.split("@")[0] }, result.access_token); } catch (e) {}
+          try { state.profile = await SupabaseClient.getProfile(result.access_token); } catch (e) {}
           saveSession(result, email, name);
           state.authLoading = false;
           state.onbStep = "country";
@@ -721,8 +722,8 @@
           state.authLoading = false;
           render();
         } else {
-          // Email confirmation required
-          state.authError = "Check your email to confirm your account, then sign in.";
+          // No token and no error — shouldn't happen, but handle gracefully
+          state.authError = "Something went wrong. Try signing in instead.";
           state.authLoading = false;
           state.onbStep = "signin";
           render();
