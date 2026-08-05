@@ -437,7 +437,7 @@
           </section>
           <button class="wide-action" data-action="scanner">Scan a product ${arrow}</button>
 
-          <p class="disclaimer">ⓘ Sources: ${story.sources.map(esc).join(", ")}. Rates are approximate consumer-level ranges.</p>
+          <p class="disclaimer">ⓘ ${(story.sources || []).length ? "Sources: " + (story.sources).map(esc).join(", ") + "." : ""} Rates are approximate consumer-level ranges.</p>
         </main>${nav()}</div>`;
     }
 

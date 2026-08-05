@@ -264,19 +264,24 @@ const SupabaseClient = {
   },
 
   /**
-   * Delete account — removes the user's profile row.
+   * Delete account — marks profile as deleted and signs out.
+   * Full auth user deletion requires server-side admin API.
    */
   async deleteAccount(accessToken) {
     if (!accessToken) return false;
     try {
       const payload = JSON.parse(atob(accessToken.split('.')[1]));
       const userId = payload.sub;
+      // Mark profile as deleted (soft delete)
       await fetch(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
-        method: "DELETE",
+        method: "PATCH",
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
         },
+        body: JSON.stringify({ display_name: "[deleted]", email: null, country_code: null }),
       });
       await this.signOut(accessToken);
       return true;
