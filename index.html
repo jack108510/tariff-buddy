@@ -1174,7 +1174,9 @@
         render();
       } else {
         // First-time user (no onboarding seen, no session) → show welcome
-        const seenOnboarding = localStorage.getItem("tb_seen_onboarding");
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoSkip = urlParams.get("skip") === "1";
+        const seenOnboarding = autoSkip || localStorage.getItem("tb_seen_onboarding");
         if (!seenOnboarding) {
           state.screen = "onboarding";
           state.onbStep = "welcome";
