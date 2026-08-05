@@ -1,2 +1,4 @@
 scripts/.env
 *.env
+ios-app/build/
+*.ipa
