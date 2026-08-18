@@ -9,6 +9,16 @@
 const SUPABASE_URL = "https://xacehhtgvubcqdoltazg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_1TNu5hqotJ7GGQXfjliivQ_ttK51EAA";
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const SupabaseClient = {
 
   /**
@@ -23,7 +33,7 @@ const SupabaseClient = {
     url += queryParts.join("&");
 
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${SUPABASE_KEY}`,
@@ -84,7 +94,7 @@ const SupabaseClient = {
   async saveScan(scanData, accessToken) {
     if (!accessToken) return null;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_scans`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/tb_scans`, {
         method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -109,7 +119,7 @@ const SupabaseClient = {
     try {
       const payload = JSON.parse(atob(accessToken.split('.')[1]));
       const userId = payload.sub;
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_scans?select=*&order=scanned_at.desc&limit=50&user_id=eq.${userId}`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/tb_scans?select=*&order=scanned_at.desc&limit=50&user_id=eq.${userId}`, {
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${accessToken}`,
@@ -127,7 +137,7 @@ const SupabaseClient = {
    */
   async signUp(email, password) {
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/signup`, {
         method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -146,7 +156,7 @@ const SupabaseClient = {
    */
   async signIn(email, password) {
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -168,7 +178,7 @@ const SupabaseClient = {
     try {
       const payload = JSON.parse(atob(accessToken.split('.')[1]));
       const userId = payload.sub;
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?select=id,email,display_name,country_code,currency,locale,created_at&id=eq.${userId}`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/tb_users?select=id,email,display_name,country_code,currency,locale,created_at&id=eq.${userId}`, {
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": `Bearer ${accessToken}`,
@@ -192,7 +202,7 @@ const SupabaseClient = {
       // Decode user ID from JWT for explicit filter
       const payload = JSON.parse(atob(accessToken.split('.')[1]));
       const userId = payload.sub;
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
         method: "PATCH",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -213,7 +223,7 @@ const SupabaseClient = {
    */
   async refreshToken(refreshToken) {
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
         method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -233,7 +243,7 @@ const SupabaseClient = {
    */
   async resetPassword(email) {
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+      const res = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/recover`, {
         method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -253,7 +263,7 @@ const SupabaseClient = {
   async signOut(accessToken) {
     if (!accessToken) return;
     try {
-      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/logout`, {
         method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
@@ -273,7 +283,7 @@ const SupabaseClient = {
       const payload = JSON.parse(atob(accessToken.split('.')[1]));
       const userId = payload.sub;
       // Mark profile as deleted (soft delete)
-      await fetch(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
+      await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/tb_users?id=eq.${userId}`, {
         method: "PATCH",
         headers: {
           "apikey": SUPABASE_KEY,

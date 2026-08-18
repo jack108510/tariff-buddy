@@ -272,7 +272,7 @@
     .story-rate-box .rate-label { font: 800 9px var(--mono); text-transform: uppercase; letter-spacing: .4px; opacity: .7; }
     .story-rate-box .rate-flag { font-size: 30px; margin-left: auto; }
 
-    @media (max-width: 680px) {
+    @media (max-width: 1024px) {
       body { background: var(--cream); }
       .stage { padding: 0; min-height: 100svh; }
       .stage:before, .stage-copy, .stage-note { display: none; }
@@ -715,43 +715,53 @@
 
       const isSignup = state.onbStep === "signup";
       let result;
-      if (isSignup) {
-        result = await SupabaseClient.signUp(email, password);
-        if (result.access_token) {
-          state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email, userId: result.user?.id };
-          // Save display name + fetch profile (wrapped in try/catch — trigger may need a moment)
-          try { await SupabaseClient.updateProfile({ display_name: name || email.split("@")[0] }, result.access_token); } catch (e) {}
-          try { state.profile = await SupabaseClient.getProfile(result.access_token); } catch (e) {}
-          saveSession(result, email, name);
-          state.authLoading = false;
-          state.onbStep = "country";
-          render();
-        } else if (result.error) {
-          state.authError = result.error_description || result.error || result.message || "Sign up failed.";
-          state.authLoading = false;
-          render();
+      try {
+        if (isSignup) {
+          result = await SupabaseClient.signUp(email, password);
+          if (result.access_token) {
+            state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email, userId: result.user?.id };
+            // Save display name + fetch profile (wrapped in try/catch — trigger may need a moment)
+            try { await SupabaseClient.updateProfile({ display_name: name || email.split("@")[0] }, result.access_token); } catch (e) {}
+            try { state.profile = await SupabaseClient.getProfile(result.access_token); } catch (e) {}
+            saveSession(result, email, name);
+            state.authLoading = false;
+            state.onbStep = "country";
+            render();
+          } else if (result.error) {
+            state.authError = result.error_description || result.error || result.message || "Sign up failed.";
+            state.authLoading = false;
+            render();
+          } else if (result.user) {
+            state.authError = "Account created. Check your email to confirm it, then sign in.";
+            state.authLoading = false;
+            state.onbStep = "signin";
+            render();
+          } else {
+            state.authError = "Something went wrong. Try signing in instead.";
+            state.authLoading = false;
+            state.onbStep = "signin";
+            render();
+          }
         } else {
-          // No token and no error — shouldn't happen, but handle gracefully
-          state.authError = "Something went wrong. Try signing in instead.";
-          state.authLoading = false;
-          state.onbStep = "signin";
-          render();
+          result = await SupabaseClient.signIn(email, password);
+          if (result.access_token) {
+            state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email: result.user?.email || email, userId: result.user?.id };
+            state.profile = await SupabaseClient.getProfile(result.access_token);
+            saveSession(result, email);
+            state.authLoading = false;
+            state.screen = "home";
+            state.onbStep = null;
+            render();
+          } else {
+            state.authError = result.error_description || result.error || "Invalid email or password.";
+            state.authLoading = false;
+            render();
+          }
         }
-      } else {
-        result = await SupabaseClient.signIn(email, password);
-        if (result.access_token) {
-          state.authUser = { token: result.access_token, refreshToken: result.refresh_token, email: result.user?.email || email, userId: result.user?.id };
-          state.profile = await SupabaseClient.getProfile(result.access_token);
-          saveSession(result, email);
-          state.authLoading = false;
-          state.screen = "home";
-          state.onbStep = null;
-          render();
-        } else {
-          state.authError = result.error_description || result.error || "Invalid email or password.";
-          state.authLoading = false;
-          render();
-        }
+      } catch (e) {
+        state.authError = "Account request failed. Check your connection and try again.";
+        state.authLoading = false;
+        render();
       }
     }
 
